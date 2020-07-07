@@ -8,7 +8,8 @@ class dsp:
     @staticmethod
     def autocorrelation(signal):
         '''The cross-correlation of a signal with itself'''
-        return [np.mean(data * signal) for data in signal]
+        res = np.correlate(signal, signal, mode='full')
+        return res[len(signal)-1:]
 
     @staticmethod
     def powerspectrum(signal):
@@ -16,7 +17,7 @@ class dsp:
 
 def pisarenko(signal, order, autocorrelation=None):
     '''
-    Psarenko's method for frequency estimation
+    Pisarenko's method for frequency estimation
     Process is assumed to consist of order complex exponentials in white noise
 
     signal: signal with additive white noise
@@ -25,7 +26,7 @@ def pisarenko(signal, order, autocorrelation=None):
         - use covariance
         - handle 0-meaning iput data, or just calculate the covariance
     '''
-    if not autocorrelation:
+    if autocorrelation is None:
         # estimate the (order + 1) x (order + 1) autocorrelation matrix
         autocorrelation = dsp.autocorrelation(signal)
 
@@ -61,11 +62,12 @@ def pisarenko(signal, order, autocorrelation=None):
     return freqs, variance
 
 if __name__ == "__main__":
-    SAMPLE_COUNT = 10000
-    space = np.linspace(0, 1, SAMPLE_COUNT)
-    noise = np.random.normal(0, 0.1, SAMPLE_COUNT)
+    SAMPLE_COUNT = 1000
+    space = np.linspace(0, 5, SAMPLE_COUNT)
+    noise = np.random.normal(0, 1, SAMPLE_COUNT)
     sig = np.sin(space * 2*np.pi) + noise
 
+    ac = np.array([6, 1.92705 + 4.58522j, -3.42705 + 3.49541j])
     freqs, variance = pisarenko(sig, 1)
 
     print(f'Frequencies: {freqs}')
