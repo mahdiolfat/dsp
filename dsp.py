@@ -7,9 +7,15 @@ import matplotlib.pyplot as plt
 class dsp:
     @staticmethod
     def autocorrelation(signal):
-        '''The cross-correlation of a signal with itself'''
-        res = np.correlate(signal, signal, mode='full')
-        return res[len(signal)-1:]
+        '''
+        The unbiased cross-correlation of a signal with itself
+        '''
+        autocorrelation = [np.mean(signal * np.roll(signal, shift))
+                           for shift in range(signal.size)]
+
+        variance = autocorrelation[0]
+        print(f'Signal Variance: {variance}, {np.var(signal)}')
+        return autocorrelation
 
     @staticmethod
     def powerspectrum(signal):
@@ -40,8 +46,8 @@ def pisarenko(signal, order, autocorrelation=None):
 
     # since autocorrelation matrix is hermitian toeplitz, eigenvalues are non-negative real
     eval, evec = np.linalg.eigh(autocorrelation_matrix)
-    print(f'Eigen values: {eval}')
-    print("Eigen vectors: ", evec)
+    print(f'Eigenvalues: {eval}')
+    print("Eigenvectors: ", evec)
 
     # there is only one noise vector
     # it is the column vector corresponding to the minimum eigenvalue
@@ -52,23 +58,29 @@ def pisarenko(signal, order, autocorrelation=None):
     # noise vector
     vmin = evec[:,vmin_i]
     eigenfilter = scipy.signal.tf2zpk([1], vmin)
+    print("Eigenfilter: ", eigenfilter)
 
     # estimated frequencies
-    freqs = np.angle(eigenfilter[1])
+    freqs = np.arccos(np.angle(eigenfilter[1]) / 2)
 
     # there are (order) signal vectors
-    # TODO: calculate power associated with each signal vector
+    # TODO: calculate power associat ed with each signal vector
 
     return freqs, variance
 
 if __name__ == "__main__":
-    SAMPLE_COUNT = 1000
-    space = np.linspace(0, 5, SAMPLE_COUNT)
-    noise = np.random.normal(0, 1, SAMPLE_COUNT)
-    sig = np.sin(space * 2*np.pi) + noise
+    SAMPLE_COUNT = 1024
+    space = np.linspace(0, 10*2*np.pi, SAMPLE_COUNT)
+    var = 0.01
+    noise = np.random.normal(0, np.sqrt(var), SAMPLE_COUNT)
+    sig = np.sin(space) + noise
+    mean = np.mean(sig)
+    print(f'Process Mean: {mean}')
+    # zero-mean the process
+    sig -= mean
 
     ac = np.array([6, 1.92705 + 4.58522j, -3.42705 + 3.49541j])
-    freqs, variance = pisarenko(sig, 1)
+    freqs, variance = pisarenko(sig, 2)
 
     print(f'Frequencies: {freqs}')
     print(f'Variance: {variance}')
@@ -77,9 +89,9 @@ if __name__ == "__main__":
     #if len(peaks):
         #print(sig[peaks])
 
-    #plt.figure(0)
-    #plt.plot(space, sig)
+    plt.figure(0)
+    plt.plot(space, sig)
     #plt.figure(1)
     #plt.plot(ps)
-    #plt.grid()
-    #plt.show()
+    plt.grid()
+    plt.show()
