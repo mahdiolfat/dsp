@@ -33,9 +33,10 @@ def mlt(M):
     window = np.sin((np.pi / 2 / M) * (wrange + 0.5))
     return wrange, window
 
-def blackman(M):
+def blackman(M, coefficients=None):
     wrange, recwindow = rectangle(M)
-    coefficients = [0.42, 0.5, 0.08]
+    if coefficients is None:
+        coefficients = [0.42, 0.5, 0.08]
     costerm = lambda n: np.cos(n * np.pi * 2 / M * wrange)
     #blackman windows have 3 cosine terms (DOFs)
     costerms = np.array([np.ones(M * 2 - 1), costerm(1), costerm(2)])
@@ -43,13 +44,7 @@ def blackman(M):
     return wrange, window
 
 def blackman_harris(M):
-    wrange, recwindow = rectangle(M)
-    coefficients = [0.4243801, 0.4973406, 0.00782793]
-    costerm = lambda n: np.cos(n * np.pi * 2 / M * wrange)
-    #blackman windows have 3 cosine terms (DOFs)
-    costerms = np.array([np.ones(M * 2 - 1), costerm(1), costerm(2)])
-    window = recwindow * np.dot(coefficients, costerms)
-    return wrange, window
+    return blackman(M, coefficients=[0.4243801, 0.4973406, 0.00782793])
 
 def barlett(M):
     pass
