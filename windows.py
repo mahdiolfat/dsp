@@ -12,22 +12,74 @@ def rectangle(M):
     # calculate positive half only, flip and use for negative half
     wrange = np.arange(-M + 1, M)
     window = (np.abs(wrange) <= (M - 1) / 2.).astype(int)
-    print(np.array([wrange, window]).T)
-    return (window, wrange)
+    return wrange, window
 
-def asinc(M):
-    '''The Aliasied Sinc function, defined as the sampled Rectanlge Window'''
-    count = M
+def hann(M):
+    wrange, recwindow = rectangle(M)
+    raised_cosine = np.cos(np.pi / M * wrange)**2
+    window = recwindow * raised_cosine
+    return wrange, window
 
-class Hamming:
+def hamming(M):
+    wrange, recwindow = rectangle(M)
+    alpha = 25 / 46
+    beta = 1 - alpha
+    window = recwindow * (alpha + (beta * np.cos(2 * np.pi / M * wrange)))
+    return wrange, window
 
-    def __init__(M):
-        self._count = M
+def mlt(M):
+    '''Modulated lapped transform'''
+    wrange = np.arange(-M + 1, M)
+    window = np.sin((np.pi / 2 / M) * (wrange + 0.5))
+    return wrange, window
+
+def blackman(M):
+    wrange, recwindow = rectangle(M)
+    coefficients = [0.42, 0.5, 0.08]
+    costerm = lambda n: np.cos(n * np.pi * 2 / M * wrange)
+    #blackman windows have 3 cosine terms (DOFs)
+    costerms = np.array([np.ones(M * 2 - 1), costerm(1), costerm(2)])
+    window = recwindow * np.dot(coefficients, costerms)
+    return wrange, window
+
+def blackman_harris(M):
+    wrange, recwindow = rectangle(M)
+    coefficients = [0.4243801, 0.4973406, 0.00782793]
+    costerm = lambda n: np.cos(n * np.pi * 2 / M * wrange)
+    #blackman windows have 3 cosine terms (DOFs)
+    costerms = np.array([np.ones(M * 2 - 1), costerm(1), costerm(2)])
+    window = recwindow * np.dot(coefficients, costerms)
+    return wrange, window
+
+def barlett(M):
+    pass
+
+def poisson(M):
+    pass
+
+def hann_poisson(M):
+    pass
+
+def slepian(M):
+    pass
+
+def kaiser(M):
+    pass
+
+def dolph_chebyshev(M):
+    pass
+
+def gaussian(M):
+    pass
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     count = 21
-    w = rectangle(count)
-    plt.bar(w[1], w[0], width=0.1)
+    #w = rectangle(count)
+    #w = mlt(count)
+    w = blackman(count)
+    w2 = blackman(count)
+    plt.bar(w[0], w[1], width=0.1)
+    plt.bar(w2[0], w2[1], width=0.1)
     plt.show()
