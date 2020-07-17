@@ -34,8 +34,10 @@ def mlt(M):
     return wrange, window
 
 def blackman(M, coefficients=None):
+    '''The Classic Blackman window. Provide coefficients to make it specifilized'''
     wrange, recwindow = rectangle(M)
     if coefficients is None:
+        # classic Blackman window
         coefficients = [0.42, 0.5, 0.08]
     costerm = lambda n: np.cos(n * np.pi * 2 / M * wrange)
     #blackman windows have 3 cosine terms (DOFs)
@@ -47,18 +49,24 @@ def blackman_harris(M):
     return blackman(M, coefficients=[0.4243801, 0.4973406, 0.00782793])
 
 def barlett(M):
-    pass
+    wrange, recwindow = rectangle(M)
+    window = recwindow * ( 1 - 2 * np.abs(wrange) / (M - 1))
+    return wrange, window
 
-def poisson(M):
-    pass
+def poisson(M, alpha=10):
+    wrange, recwindow = rectangle(M)
+    window = recwindow * np.exp(2 * -alpha * np.abs(wrange) / (M - 1))
+    return wrange, window
 
-def hann_poisson(M):
-    pass
+def hann_poisson(M, alpha=10):
+    wrange, recwindow = rectangle(M)
+    window = recwindow * (1 + np.cos(2 * np.pi * wrange / (M - 1))) * np.exp(2 * -alpha * np.abs(wrange) / (M - 1))
+    return wrange, window
 
 def slepian(M):
     pass
 
-def kaiser(M):
+def kaiser(M, beta=10):
     pass
 
 def dolph_chebyshev(M):
@@ -73,8 +81,6 @@ if __name__ == "__main__":
     count = 21
     #w = rectangle(count)
     #w = mlt(count)
-    w = blackman(count)
-    w2 = blackman(count)
+    w = hann_poisson(count)
     plt.bar(w[0], w[1], width=0.1)
-    plt.bar(w2[0], w2[1], width=0.1)
     plt.show()
