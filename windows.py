@@ -2,33 +2,66 @@
 
 import numpy as np
 
+def analyzer():
+    ''' Time/Frequency domain analysis of arbitrary spectrum windows
+        frequency response (amplitude, magniuted, and phase)
+    '''
+
 def rectangle(M):
     '''
     The rectangle window.
     Zero-phase: symmetric about 0
     M must be odd
+    
+    properties:
+        * zero crossings at integer multiples of Omega = 2*pi/M (frequency sampling interval for a length M DFT)
+        * Main lobe width is 2*Omegaa = 4*pi / M
+        * As M increases, main lobe narrows (better frequency resolution)
+        * M has no effect on the height of the sidee lobes
+        * First side lobe is only 13dB down from the main-lobe peak
+        * Side lobes roll off at approximately 6dB per octave
+        * A linear phase term arises when we shift the window to make it causal (shift of M-1/2 rad)
     '''
 
     # calculate positive half only, flip and use for negative half
     wrange = np.arange(-M + 1, M)
-    window = (np.abs(wrange) <= (M - 1) / 2.).astype(int)
+    window = (np.abs(wrange) <= (M - 1) / 2.).astype(float)
     return wrange, window
 
+def hamming_generalize(M, alpha, beta):
+    pass
+
 def hann(M):
+    ''' Also known as Hanning or raised-cosine window
+        - Main lobe is 4*Omega wide, Omega = 2*pi / M
+        - First side lobe is at -31dB
+        - Side lobes roll off approximately at -18 dB per octave
+    '''
     wrange, recwindow = rectangle(M)
     raised_cosine = np.cos(np.pi / M * wrange)**2
     window = recwindow * raised_cosine
     return wrange, window
 
 def hamming(M):
+    '''
+        - Discontinuous "slam to zero" at endpoints
+        - Firstt side lob is 51 dB down
+        - Roll off asymptotically -6 dB per octave
+        - Side lobes are closer to equal ripple
+    '''
     wrange, recwindow = rectangle(M)
     alpha = 25 / 46
     beta = 1 - alpha
     window = recwindow * (alpha + (beta * np.cos(2 * np.pi / M * wrange)))
     return wrange, window
 
-def mlt(M):
-    '''Modulated lapped transform'''
+def modulated_lapped_transform(M):
+    '''
+    Modulated lapped transform
+        - Side lobes 24 dB down
+        - Assymptotically optimal coding gain
+        - 
+    '''
     wrange = np.arange(-M + 1, M)
     window = np.sin((np.pi / 2 / M) * (wrange + 0.5))
     return wrange, window
@@ -79,8 +112,17 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     count = 21
-    #w = rectangle(count)
+    w = rectangle(count)
     #w = mlt(count)
-    w = hann_poisson(count)
+    #w = hann_poisson(count)
+    #w = hann(3)
+    #print(w[1])
     plt.bar(w[0], w[1], width=0.1)
+
+    spectrum = np.fft.fft(w[1])
+    spectrum = np.fft.fftshift(spectrum)
+
+    plt.figure()
+
+    plt.plot(spectrum)
     plt.show()
