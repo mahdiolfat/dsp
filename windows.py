@@ -2,6 +2,8 @@
 
 import numpy as np
 
+import util
+
 def analyzer():
     ''' Time/Frequency domain analysis of arbitrary spectrum windows
         frequency response (amplitude, magniuted, and phase)
@@ -111,7 +113,7 @@ def gaussian(M):
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    count = 21
+    count = 11
     w = rectangle(count)
     #w = mlt(count)
     #w = hann_poisson(count)
@@ -119,10 +121,10 @@ if __name__ == "__main__":
     #print(w[1])
     plt.bar(w[0], w[1], width=0.1)
 
-    spectrum = np.fft.fft(w[1])
-    spectrum = np.fft.fftshift(spectrum)
-
+    #spectrum = np.fft.fft(w[1])
+    spectrum = count * util.asinc(count, np.linspace(-np.pi, np.pi, num=100, endpoint=False))
     plt.figure()
 
-    plt.plot(spectrum)
+    normfreq = np.linspace(-np.pi, np.pi, num=100, endpoint=False)
+    plt.plot(normfreq, spectrum)
     plt.show()

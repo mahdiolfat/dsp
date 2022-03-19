@@ -5,9 +5,11 @@ import numpy as np
 def asinc(M, w):
     '''The Aliasied Sinc function, defined as the sampled Rectanlge Window.
        asinc becomes the sinc function in the limit as sampling rate -> inf'''
-    frange = np.arange(M)
-    return np.sin(frange * w / 2) / (frange * np.sin( w / 2))
+    denom = w / 2 
+    num = denom * M
+    return np.sin(num) / (M * np.sin(denom))
 
-def fftshitf(buf):
+def fftshitf(signal):
     '''take fs/2 as negative frequency and dc as positive to balance out
        frequency components'''
+    shifted = signal
