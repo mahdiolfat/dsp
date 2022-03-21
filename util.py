@@ -9,7 +9,14 @@ def asinc(M, w):
     num = denom * M
     return np.sin(num) / (M * np.sin(denom))
 
-def fftshitf(signal):
-    '''take fs/2 as negative frequency and dc as positive to balance out
-       frequency components'''
-    shifted = signal
+def fftshift(signal):
+   '''take fs/2 as negative frequency and dc (0) as positive to balance out
+      frequency components'''
+   shifted = np.empty_like(signal)
+   midpoint = int(len(signal) / 2)
+   adj = 1 if len(signal) % 2 else 0
+   shifted[:midpoint] = signal[midpoint+adj:]
+   shifted[midpoint:] = signal[:midpoint+adj]
+   return shifted
+
+print(fftshift([1, 2, 3]))
