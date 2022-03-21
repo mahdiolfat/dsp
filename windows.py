@@ -4,6 +4,52 @@ import numpy as np
 
 import util
 
+def hamming_spectrum(M, alpha, beta):
+    omega = 2 * np.pi / M
+    samplepoints = 1000
+    domain_1 = np.linspace(-np.pi, np.pi, num=samplepoints, endpoint=False)
+    domain_2 = np.linspace(-np.pi - omega, np.pi - omega, num=samplepoints, endpoint=False)
+    domain_3 = np.linspace(-np.pi + omega, np.pi + omega, num=samplepoints, endpoint=False)
+    transform = alpha * util.asinc(count, domain_1) + beta * util.asinc(count, domain_2) + beta * util.asinc(count, domain_3)
+
+    spectrum = M * transform
+    return spectrum
+
+class window():
+    '''Spectrum analysis window'''
+
+    def __init__(self, count, phase, fs = None, **kwargs) -> None:
+        self._count = None
+        self._phase = None
+        self._spectrum = None
+        self._magnitude = None
+        self._amplitude = None
+        self._side_lob = None
+        self._roll_off = None
+        self._periodic = None # for overlap+add
+        self._endpoint = False #  if count 
+
+
+    @property
+    def phase(self):
+        return self._phase
+
+    @property
+    def spectrum(self):
+        return self._spectrum
+
+    @property
+    def amplitude(self):
+        return self._spectrum
+
+    @property
+    def magnitude(self):
+        return self._magnitude
+
+    def is_causal(self):
+        return False
+
+
 def analyzer():
     ''' Time/Frequency domain analysis of arbitrary spectrum windows
         frequency response (amplitude, magniuted, and phase)
@@ -28,33 +74,54 @@ def rectangle(M):
     # calculate positive half only, flip and use for negative half
     wrange = np.arange(-M + 1, M)
     window = (np.abs(wrange) <= (M - 1) / 2.).astype(float)
+    _spectrum = M * util.asinc(count, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
     return wrange, window
 
 def hamming_generalize(M, alpha, beta):
     pass
 
-def hann(M):
+def hann(M, include_zeros=False, periodic=False, causal=True):
     ''' Also known as Hanning or raised-cosine window
         - Main lobe is 4*Omega wide, Omega = 2*pi / M
         - First side lobe is at -31dB
         - Side lobes roll off approximately at -18 dB per octave
     '''
-    wrange, recwindow = rectangle(M)
-    raised_cosine = np.cos(np.pi / M * wrange)**2
-    window = recwindow * raised_cosine
+    count = M
+    start = 0
+    end = M
+    if not periodic:
+        if include_zeros:
+            count = M - 1
+        else:
+            count = M + 1
+            start = 1
+            end = M + 1
+
+    
+    wrange = np.arange(start, end)
+    sign = -1 if causal else 1
+
+    window = 0.5 * (1 + sign * np.cos(2 * np.pi * wrange / count))
+    spectrum = M * util.asinc(M, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
+
     return wrange, window
 
-def hamming(M):
+def hamming(M, periodic=False):
     '''
         - Discontinuous "slam to zero" at endpoints
-        - Firstt side lob is 51 dB down
+        - First side lob is 41 dB down
         - Roll off asymptotically -6 dB per octave
         - Side lobes are closer to equal ripple
     '''
-    wrange, recwindow = rectangle(M)
-    alpha = 25 / 46
-    beta = 1 - alpha
-    window = recwindow * (alpha + (beta * np.cos(2 * np.pi / M * wrange)))
+    wrange = np.arange(M)
+    count = M if periodic else M - 1
+
+    #alpha = 25 / 46
+    #beta = 1 - alpha
+    alpha = 0.54
+    beta = 0.46
+
+    window = alpha - beta * np.cos(2 * np.pi * wrange / count)
     return wrange, window
 
 def modulated_lapped_transform(M):
@@ -62,7 +129,7 @@ def modulated_lapped_transform(M):
     Modulated lapped transform
         - Side lobes 24 dB down
         - Assymptotically optimal coding gain
-        - 
+        - Zero-phase-window transform has smallest moment of inertia over all windows
     '''
     wrange = np.arange(-M + 1, M)
     window = np.sin((np.pi / 2 / M) * (wrange + 0.5))
@@ -113,18 +180,31 @@ def gaussian(M):
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    count = 11
-    w = rectangle(count)
+    count = 21
+    #w = rectangle(count)
     #w = mlt(count)
     #w = hann_poisson(count)
-    #w = hann(3)
+    w = hamming(count)
     #print(w[1])
     plt.bar(w[0], w[1], width=0.1)
 
     #spectrum = np.fft.fft(w[1])
-    spectrum = count * util.asinc(count, np.linspace(-np.pi, np.pi, num=100, endpoint=False))
-    plt.figure()
+    #spectrum = count * util.asinc(count, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
 
-    normfreq = np.linspace(-np.pi, np.pi, num=100, endpoint=False)
+    spectrum = hamming_spectrum(count, 0.54, 0.23)
+
+    # normalized frequency (cycles / sample)
+    normfreq = np.linspace(-0.5, 0.5, num=1000, endpoint=False)
+
+    amplitude = spectrum**2
+    magnitude = 10 * np.log10(amplitude)
+    plt.figure()
     plt.plot(normfreq, spectrum)
+    plt.figure()
+    plt.plot(normfreq, np.sqrt(amplitude))
+    plt.figure()
+    plt.plot(normfreq, magnitude - np.nanmax(magnitude))
+    #plt.plot(normfreq, magnitude)
+    plt.ylim((-60, 0))
+
     plt.show()
