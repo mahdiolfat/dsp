@@ -15,6 +15,9 @@ def hamming_spectrum(M, alpha, beta):
     spectrum = M * transform
     return spectrum
 
+def spectrum_blackman_harris(M, order, coefficients):
+    pass
+
 class window():
     '''Spectrum analysis window'''
 
@@ -74,7 +77,7 @@ def rectangle(M):
     # calculate positive half only, flip and use for negative half
     wrange = np.arange(-M + 1, M)
     window = (np.abs(wrange) <= (M - 1) / 2.).astype(float)
-    _spectrum = M * util.asinc(count, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
+    #_spectrum = M * util.asinc(count, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
     return wrange, window
 
 def hamming_generalize(M, alpha, beta):
@@ -131,24 +134,42 @@ def modulated_lapped_transform(M):
         - Assymptotically optimal coding gain
         - Zero-phase-window transform has smallest moment of inertia over all windows
     '''
-    wrange = np.arange(-M + 1, M)
+    wrange = np.arange(0, 2 * M)
     window = np.sin((np.pi / 2 / M) * (wrange + 0.5))
     return wrange, window
 
-def blackman(M, coefficients=None):
-    '''The Classic Blackman window. Provide coefficients to make it specifilized'''
-    wrange, recwindow = rectangle(M)
-    if coefficients is None:
-        # classic Blackman window
-        coefficients = [0.42, 0.5, 0.08]
-    costerm = lambda n: np.cos(n * np.pi * 2 / M * wrange)
-    #blackman windows have 3 cosine terms (DOFs)
-    costerms = np.array([np.ones(M * 2 - 1), costerm(1), costerm(2)])
-    window = recwindow * np.dot(coefficients, costerms)
-    return wrange, window
+def blackman_generalized(M, coefficients):
+    orders = len(coefficients)
+    wrange = np.arange(-(M - 1) / 2, M / 2)
+    nrange = np.zeros((1, M))
+    wterms = np.zeros((orders, 3 * M))
+
+    for order in range(orders):
+        wterms[order,:] = np.concatenate((nrange, np.cos(order * 2 * np.pi * wrange / M), nrange), axis=None)
+    window = np.matmul(coefficients, wterms)
+
+    return wrange, window.T
+
+
+def blackman_classic(M):
+    '''The Classic Blackman window. Provide coefficients to make it specifilized
+        - side lobes roll-off at about 18dB per octaave
+        - first side lobe is 58dB down
+        - 1dof used to scale the window
+        - 1dof used for roll-off by matching amplitude and slope to 0 at window endpoints
+        - 1dof used to minimize side lobes
+    '''
+    COEFFICIENTS = [0.42, 0.5, 0.08]
+    return blackman_generalized(M, COEFFICIENTS)
 
 def blackman_harris(M):
-    return blackman(M, coefficients=[0.4243801, 0.4973406, 0.00782793])
+    '''
+        - side-love level 71.48 dB
+        - side lobes roll off at 6dB
+        - 1dof to scale the window
+        - 2dofs to minimize side-lob levels
+    '''
+    return blackman_generalized(M, coefficients=[0.4243801, 0.4973406, 0.00782793])
 
 def barlett(M):
     wrange, recwindow = rectangle(M)
@@ -179,32 +200,35 @@ def gaussian(M):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-
-    count = 21
+    count = 101
     #w = rectangle(count)
     #w = mlt(count)
     #w = hann_poisson(count)
-    w = hamming(count)
+    #w = hann(count)
+    w = blackman_classic(count)
     #print(w[1])
-    plt.bar(w[0], w[1], width=0.1)
+    #w = modulated_lapped_transform(count)
+    plt.bar(np.arange(len(w[1])), w[1], width=0.1)
+    plt.show()
+    exit(0)
 
     #spectrum = np.fft.fft(w[1])
     #spectrum = count * util.asinc(count, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
 
-    spectrum = hamming_spectrum(count, 0.54, 0.23)
+    #spectrum = hamming_spectrum(count, 1/2, 1/4)
 
-    # normalized frequency (cycles / sample)
-    normfreq = np.linspace(-0.5, 0.5, num=1000, endpoint=False)
+    ## normalized frequency (cycles / sample)
+    #normfreq = np.linspace(-0.5, 0.5, num=1000, endpoint=False)
 
-    amplitude = spectrum**2
-    magnitude = 10 * np.log10(amplitude)
-    plt.figure()
-    plt.plot(normfreq, spectrum)
-    plt.figure()
-    plt.plot(normfreq, np.sqrt(amplitude))
-    plt.figure()
-    plt.plot(normfreq, magnitude - np.nanmax(magnitude))
-    #plt.plot(normfreq, magnitude)
-    plt.ylim((-60, 0))
+    #amplitude = np.abs(spectrum)
+    #magnitude = 20 * np.log10(amplitude)
+    #plt.figure()
+    #plt.plot(normfreq, spectrum)
+    #plt.figure()
+    #plt.plot(normfreq, amplitude)
+    #plt.figure()
+    #plt.plot(normfreq, magnitude - np.nanmax(magnitude))
+    ##plt.plot(normfreq, magnitude)
+    #plt.ylim((-60, 0))
 
-    plt.show()
+    #plt.show()

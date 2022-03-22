@@ -18,5 +18,3 @@ def fftshift(signal):
    shifted[:midpoint] = signal[midpoint+adj:]
    shifted[midpoint:] = signal[:midpoint+adj]
    return shifted
-
-print(fftshift([1, 2, 3]))
