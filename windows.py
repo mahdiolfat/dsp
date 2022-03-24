@@ -200,10 +200,16 @@ def barlett(M, endpoint_zeros=False):
     #wrange, recwindow = rectangle(M)
     #window = recwindow * ( 1 - 2 * np.abs(wrange) / (M - 1))
 
+    num = M - 1 if endpoint_zeros else M
     # for M odd
-    wrange = np.linspace(-(M-1)/2, (M-1)/2)
-    window = 2 * np.arange(M/2) / (M - 1)
-    window = np.concatenate((window, window[::-1]), axis=None)
+    halfrange = np.linspace(0, (M - 1) / 2, num=num)
+    if not endpoint_zeros:
+        halfrange = halfrange[1:]
+
+    wrange = np.linspace(-(M - 1) / 2, (M - 1) / 2, num=M)
+
+    window = 2 * halfrange / (M - 1)
+    window = np.concatenate((window, window[-2::-1]), axis=None)
     return wrange, window
 
 def poisson(M, alpha=10):
@@ -250,7 +256,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     count = 101
 
-    print(barlett(3)[1])
+    w = barlett(3)
     #w = rectangle(count)
     #w = mlt(count)
     #w = hann_poisson(count)
@@ -258,7 +264,8 @@ if __name__ == "__main__":
     #w = blackman_classic(count)
     #print(w[1])
     #w = modulated_lapped_transform(count)
-    #plt.bar(np.arange(len(w[1])), w[1], width=0.1)
+    print(w[1])
+    #plt.bar(w[0], w[1], width=0.1)
     #plt.show()
     #exit(0)
 
