@@ -40,7 +40,7 @@ def pisarenko(signal, order, autocorrelation=None):
     # only the first (order + 1) of the autocorrelation sequence is used
     rx = np.array(autocorrelation[:order + 1])
 
-    # (order + 1) x (order + 1) hermitian toeplitz auttocorrelation matrix
+    # (order + 1) x (order + 1) hermitian toeplitz autocorrelation matrix
     autocorrelation_matrix = scipy.linalg.toeplitz(rx)
     print(autocorrelation_matrix)
 
@@ -64,7 +64,7 @@ def pisarenko(signal, order, autocorrelation=None):
     freqs = np.arccos(np.angle(eigenfilter[1]) / 2)
 
     # there are (order) signal vectors
-    # TODO: calculate power associat ed with each signal vector
+    # TODO: calculate power associated with each signal vector
 
     return freqs, variance
 

@@ -18,3 +18,14 @@ def fftshift(signal):
    shifted[:midpoint] = signal[midpoint+adj:]
    shifted[midpoint:] = signal[:midpoint+adj]
    return shifted
+
+def dft(signal):
+   '''
+      - discrete time
+      - finit frequency
+      - discrete frequency
+      - finit time
+   '''
+
+   wrange = np.arange(len(signal))
+   

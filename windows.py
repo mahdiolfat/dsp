@@ -1,10 +1,11 @@
 '''A module containing a set of window filters'''
 
+from matplotlib.pyplot import axis
 import numpy as np
 
 import util
 
-def hamming_spectrum(M, alpha, beta):
+def spectrum_hamming(M, alpha, beta):
     omega = 2 * np.pi / M
     samplepoints = 1000
     domain_1 = np.linspace(-np.pi, np.pi, num=samplepoints, endpoint=False)
@@ -14,9 +15,6 @@ def hamming_spectrum(M, alpha, beta):
 
     spectrum = M * transform
     return spectrum
-
-def spectrum_blackman_harris(M, order, coefficients):
-    pass
 
 class window():
     '''Spectrum analysis window'''
@@ -31,6 +29,7 @@ class window():
         self._roll_off = None
         self._periodic = None # for overlap+add
         self._endpoint = False #  if count 
+        self._alternative_names = None
 
 
     @property
@@ -52,11 +51,12 @@ class window():
     def is_causal(self):
         return False
 
+    def is_symmetric(self):
+        return False
 
-def analyzer():
-    ''' Time/Frequency domain analysis of arbitrary spectrum windows
-        frequency response (amplitude, magniuted, and phase)
-    '''
+    def is_zerophase(self):
+        return not self.is_causal()
+
 
 def rectangle(M):
     '''
@@ -65,13 +65,13 @@ def rectangle(M):
     M must be odd
     
     properties:
-        * zero crossings at integer multiples of Omega = 2*pi/M (frequency sampling interval for a length M DFT)
-        * Main lobe width is 2*Omegaa = 4*pi / M
-        * As M increases, main lobe narrows (better frequency resolution)
-        * M has no effect on the height of the sidee lobes
-        * First side lobe is only 13dB down from the main-lobe peak
-        * Side lobes roll off at approximately 6dB per octave
-        * A linear phase term arises when we shift the window to make it causal (shift of M-1/2 rad)
+        - zero crossings at integer multiples of Omega = 2*pi/M (frequency sampling interval for a length M DFT)
+        - Main lobe width is 2*Omegaa = 4*pi / M
+        - As M increases, main lobe narrows (better frequency resolution)
+        - M has no effect on the height of the sidee lobes
+        - First side lobe is only 13dB down from the main-lobe peak
+        - Side lobes roll off at approximately 6dB per octave
+        - A linear phase term arises when we shift the window to make it causal (shift of M-1/2 rad)
     '''
 
     # calculate positive half only, flip and use for negative half
@@ -152,15 +152,14 @@ def blackman_generalized(M, coefficients):
 
 
 def blackman_classic(M):
-    '''The Classic Blackman window. Provide coefficients to make it specifilized
+    '''The Classic Blackman window.
         - side lobes roll-off at about 18dB per octaave
         - first side lobe is 58dB down
         - 1dof used to scale the window
         - 1dof used for roll-off by matching amplitude and slope to 0 at window endpoints
         - 1dof used to minimize side lobes
     '''
-    COEFFICIENTS = [0.42, 0.5, 0.08]
-    return blackman_generalized(M, COEFFICIENTS)
+    return blackman_generalized(M, coefficients=[0.42, 0.5, 0.08])
 
 def blackman_harris(M):
     '''
@@ -171,9 +170,25 @@ def blackman_harris(M):
     '''
     return blackman_generalized(M, coefficients=[0.4243801, 0.4973406, 0.00782793])
 
-def barlett(M):
-    wrange, recwindow = rectangle(M)
-    window = recwindow * ( 1 - 2 * np.abs(wrange) / (M - 1))
+def spectrum_barlett(M):
+    return ((M - 1) / 2)**2 * util.asinc((M - 1) / 2, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
+
+def barlett(M, endpoint_zeros=False):
+    '''
+        - convolution of two length (M - 1) / 2 rectangular windows
+        - main lobe twice as wide as that of a rectangular window of length M
+        - first side lobe twice aas faar down as rectangular window
+        - often applied implicitly to sample correlations of finite data
+        - also called the "tent function"
+        - can replace M - 1 by M + 1 to avoid including endpoint zeros
+    '''
+    #wrange, recwindow = rectangle(M)
+    #window = recwindow * ( 1 - 2 * np.abs(wrange) / (M - 1))
+
+    # for M odd
+    wrange = np.linspace(-(M-1)/2, (M-1)/2)
+    window = 2 * np.arange(M/2) / (M - 1)
+    window = np.concatenate((window, window[::-1]), axis=None)
     return wrange, window
 
 def poisson(M, alpha=10):
@@ -198,24 +213,44 @@ def dolph_chebyshev(M):
 def gaussian(M):
     pass
 
+def spectrum_blackman_harris(M, order=None, coefficients=None):
+    '''
+        Frequency domain implementation can be performed as a (2 * order -1)-point convolution with the spectrum of the unwindowed data
+        Generally, any L-term Blackman-Harris window requires convolution of the critically saampled spectrum with a smoother of length 2L-1
+    '''
+
+    # M point rectangular data
+    wrange, wr = rectangle(M)
+    # M point dft
+    dft = np.fft.fftshift(np.fft.fft(wr, 1024))
+
+    smoother = [1/4, 1/2, 1/4]
+
+    # convolve DFT data with the smoother
+    window = np.convolve(dft, smoother)
+
+    return window
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     count = 101
+
+    print(barlett(3)[1])
     #w = rectangle(count)
     #w = mlt(count)
     #w = hann_poisson(count)
     #w = hann(count)
-    w = blackman_classic(count)
+    #w = blackman_classic(count)
     #print(w[1])
     #w = modulated_lapped_transform(count)
-    plt.bar(np.arange(len(w[1])), w[1], width=0.1)
-    plt.show()
-    exit(0)
+    #plt.bar(np.arange(len(w[1])), w[1], width=0.1)
+    #plt.show()
+    #exit(0)
 
     #spectrum = np.fft.fft(w[1])
     #spectrum = count * util.asinc(count, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
 
-    #spectrum = hamming_spectrum(count, 1/2, 1/4)
+    #spectrum = spectrum_hamming(count, 1/2, 1/4)
 
     ## normalized frequency (cycles / sample)
     #normfreq = np.linspace(-0.5, 0.5, num=1000, endpoint=False)
