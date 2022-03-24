@@ -173,6 +173,21 @@ def blackman_harris(M):
 def spectrum_barlett(M):
     return ((M - 1) / 2)**2 * util.asinc((M - 1) / 2, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
 
+def power_of_cosine(M, order):
+    '''
+        - parametrizes the L-term Blackman-Harris windows (for L = order / 2 + 1)
+        - first P terms of the window's Taylor expansion, endpoints identically 0
+        - roll-ff rate ~ 6 * (orderr + 1) dB / octave
+        - order = 0 -> rectangular window
+        - order = 1 -> MLT sine window
+        - order = 2 Hann window
+        - order = 4 Alternative Blackman (maximized roll-off rate)
+    '''
+    wrange, rwindow = rectangle(M)
+    window = rwindow  * np.power(np.cos(np.pi * wrange / M), order)
+
+    return wrange, window
+
 def barlett(M, endpoint_zeros=False):
     '''
         - convolution of two length (M - 1) / 2 rectangular windows
