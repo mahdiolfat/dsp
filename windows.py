@@ -30,7 +30,11 @@ class window():
         self._periodic = None # for overlap+add
         self._endpoint = False #  if count 
         self._alternative_names = None
-
+        self._timeconstant = None # time domain rate of decay
+        self._slope = None
+        self._curvature = None
+        self._normalized_amplitude = True
+        self._normalized_frequency = True
 
     @property
     def phase(self):
@@ -83,11 +87,13 @@ def rectangle(M):
 def hamming_generalize(M, alpha, beta):
     pass
 
-def hann(M, include_zeros=False, periodic=False, causal=True):
+def hann(M, include_zeros=True, periodic=False, causal=True):
     ''' Also known as Hanning or raised-cosine window
         - Main lobe is 4*Omega wide, Omega = 2*pi / M
         - First side lobe is at -31dB
         - Side lobes roll off approximately at -18 dB per octave
+
+        TODO: explain the inputs
     '''
     count = M
     start = 0
@@ -100,9 +106,13 @@ def hann(M, include_zeros=False, periodic=False, causal=True):
             start = 1
             end = M + 1
 
-    
+    sign = -1
+    if not causal:
+        sign = 1
+        start -= count / 2
+        end -= count / 2
+
     wrange = np.arange(start, end)
-    sign = -1 if causal else 1
 
     window = 0.5 * (1 + sign * np.cos(2 * np.pi * wrange / count))
     spectrum = M * util.asinc(M, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
@@ -196,6 +206,9 @@ def barlett(M, endpoint_zeros=False):
         - often applied implicitly to sample correlations of finite data
         - also called the "tent function"
         - can replace M - 1 by M + 1 to avoid including endpoint zeros
+
+
+        - TODO: handle even M
     '''
     #wrange, recwindow = rectangle(M)
     #window = recwindow * ( 1 - 2 * np.abs(wrange) / (M - 1))
@@ -212,14 +225,39 @@ def barlett(M, endpoint_zeros=False):
     window = np.concatenate((window, window[-2::-1]), axis=None)
     return wrange, window
 
-def poisson(M, alpha=10):
-    wrange, recwindow = rectangle(M)
-    window = recwindow * np.exp(2 * -alpha * np.abs(wrange) / (M - 1))
+def poisson(M, alpha):
+    M2 = (M - 1) / 2
+    wrange = np.linspace(-M2, M2, num=M)
+    rate = -alpha / M2
+    window = np.exp(rate * np.abs(wrange))
+    #wrange, recwindow = rectangle(M)
+    #window = recwindow * np.exp(2 * -alpha * np.abs(wrange) / (M - 1))
     return wrange, window
 
 def hann_poisson(M, alpha=10):
-    wrange, recwindow = rectangle(M)
-    window = recwindow * (1 + np.cos(2 * np.pi * wrange / (M - 1))) * np.exp(2 * -alpha * np.abs(wrange) / (M - 1))
+    ''' hann poisson as the product of the associated hann and poisson windows
+        - No side-lobes for alpha >= 2
+        - Transform magnitude has negative slope for all positive frequencies
+        - Has a convex transform magnitude to the left or to the right of the peak
+        - valuable for any convext optimization method such as "hill climbing"
+    '''
+
+    wrange, whann = hann(count, include_zeros=True, causal=False)
+    _, wpoisson = poisson(count, alpha=alpha)
+    window = whann * wpoisson
+    return wrange, window
+
+def hann_poisson2(M, alpha=10):
+    ''' hann poisson direct implementation'''
+    M2 = (M - 1) / 2
+    wrange = np.linspace(-M2, M2, num=M)
+    poissonrate = -alpha / M2
+    poisson = np.exp(poissonrate * np.abs(wrange))
+
+    hannrate = np.pi / M2
+    hann = 0.5 * (1 + np.cos(hannrate*wrange))
+
+    window = poisson * hann
     return wrange, window
 
 def slepian(M):
@@ -254,9 +292,12 @@ def spectrum_blackman_harris(M, order=None, coefficients=None):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    count = 101
+    count = 21
 
-    w = barlett(3)
+    w = poisson(count, 2)
+    w2 = hann(count, causal=False)
+    w3 = hann_poisson(count, 2)
+    w4 = hann_poisson2(count, 2)
     #w = rectangle(count)
     #w = mlt(count)
     #w = hann_poisson(count)
@@ -264,10 +305,16 @@ if __name__ == "__main__":
     #w = blackman_classic(count)
     #print(w[1])
     #w = modulated_lapped_transform(count)
-    print(w[1])
-    #plt.bar(w[0], w[1], width=0.1)
-    #plt.show()
-    #exit(0)
+    #print(w[1])
+    #plt.bar(w[0], w[1], width=0.15, color='g')
+    #plt.bar(w2[0], w2[1], width=0.1, color='b')
+    plt.plot(w[0], w[1], linestyle = "-.", marker= '.', color='g')
+    plt.plot(w2[0], w2[1], linestyle = "--", marker='o', color='b')
+    plt.plot(w3[0], w3[1], marker='D', color='r')
+    plt.plot(w4[0], w4[1], marker='1', color='m')
+    plt.grid()
+    plt.show()
+    exit(0)
 
     #spectrum = np.fft.fft(w[1])
     #spectrum = count * util.asinc(count, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
