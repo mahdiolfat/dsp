@@ -290,10 +290,33 @@ def kaiser(M, beta=10):
         - can be parametrized by alpha, where alpha = beta / pi. Alpha is half the window's time baandwidth product in cycle (sec * cycles/sec)
         - for beta = 0, it reduces to the rectangle window
     '''
+    M2 = (M - 1) / 2
+    wrange = np.linspace(-M2, M2, num=M)
+    window = util.bessel_first(beta * np.sqrt(1 - (2 * wrange / M)**2)) / util.bessel_first(beta)
+
+def spectrum_kaiser(M, beta):
+    wrange = np.linspace(-M, M, num=2 * M + 1)
+    term1 = M / util.bessel_first(beta)
+    arg = np.sqrt((M * wrange / 2)**2 - beta**2)
+    term2 = np.sin(arg) / arg
+    spectrum = term1 * term2
+    return wrange, spectrum
+
+def chebyshev(M, Wc):
+    '''
+        - alternate: dolph_chebyshev, dolph
+        - minimizes the chebyshev norm of the side lobes for a given main-lobe width of 2 * Wc
+        - the transform 
+        - computed as the inverse DFT of its transform
+    '''
+
+
     pass
 
-def dolph_chebyshev(M):
-    pass
+def spectrum_chebyshev(M, Wc):
+    '''
+        -
+    '''
 
 def gaussian(M):
     pass
