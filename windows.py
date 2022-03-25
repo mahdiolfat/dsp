@@ -331,8 +331,28 @@ def spectrum_chebyshev(M, Wc):
         -
     '''
 
-def gaussian(M):
-    pass
+def gaussian_norm(M, alpha):
+    '''
+        - alpha = ((M - 1) / 2) / sigma so that the window shape is invariant to the window length M
+        - note: on a dB scale, Gaussians are quadratic: parabolic interpolation of a sampled Gaussian transform is exact
+        - the spectrum transforms to itself
+        - it achieves the minimmum time-bandwidth product, sigma_t * sigma_w = sigma * 1 / sigma = 1
+        - Gaussian has infinite duration, so must be truncated
+    '''
+
+    M2 = (M - 1) / 2
+    wrange = np.linspace(-M2, M2, num=M)
+    window = np.exp( - 1 / 2 * np.pow(alpha * wrange / (M - 1 / 2), 2))
+    return wrange, window
+
+def gaussian(M, sigma):
+    '''
+        - sigma should be specified aas a fraaction of the window length, e.g., M/8
+    '''
+    M2 = (M - 1) / 2
+    wrange = np.linspace(-M2, M2, num=M)
+    window = np.exp(-wrange * wrange / (2 * sigma**2))
+    return wrange, window
 
 def spectrum_blackman_harris(M, order=None, coefficients=None):
     '''
@@ -354,9 +374,9 @@ def spectrum_blackman_harris(M, order=None, coefficients=None):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    count = 101
+    count = 21
 
-    w = kaiser(count, beta=np.pi*3)
+    w = gaussian(count, count/8)
     #spectrum = chebyshev(count, 60)
     #w = poisson(count, 2)
     #w2 = hann(count, causal=False)
