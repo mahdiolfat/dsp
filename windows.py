@@ -2,6 +2,7 @@
 
 from matplotlib.pyplot import axis
 import numpy as np
+from scipy import linalg
 
 import util
 
@@ -260,10 +261,35 @@ def hann_poisson2(M, alpha=10):
     window = poisson * hann
     return wrange, window
 
-def slepian(M):
-    pass
+def slepian(M, Wc):
+    '''
+        - for a main-lobe width of 2w_c, the Digital Prolate Spheroidal Sequences (DPSS) uses all M degrees of freedom (sample values)
+          in an M-point window w(n) to obtain a window transform which maximizes the energy of the main lobe relative to total energy
+        - This function computes the DPSS window of length M, having cut-off frequency Wc in (0, pi)
+    '''
+    wrange = np.arange(1, M)
+    samples = np.sin(Wc * wrange) / wrange
+    bins = np.concatenate((Wc, samples), axis=None)
+    A = linalg.toeplitz(bins)
+    evals, evects = linalg.eigh(A)
+    # only need the principal eigenvector
+    imax = np.argmax(np.abs(evals))
+    pvect = evects[:,imax]
+    window = pvect / np.amax(pvect)
+
+    return wrange, window
 
 def kaiser(M, beta=10):
+    '''
+        - alternate: Kaiser-Bessel
+        - reduces to rectangular window for beta = 0
+        - asymptotic roll-off is 6dB/octave
+        - first NULL in transforrm is at w0 = 2 * beta / M
+        - time-bandwidth product w0(M/2) = beta radians if bandwidths are measured from 0 to positive band-limit
+        - full time-bandwidth product (2*w0)M = 4 * beta radians when frequency bandwidth is defined as main-lobe width out to first null
+        - can be parametrized by alpha, where alpha = beta / pi. Alpha is half the window's time baandwidth product in cycle (sec * cycles/sec)
+        - for beta = 0, it reduces to the rectangle window
+    '''
     pass
 
 def dolph_chebyshev(M):
@@ -292,12 +318,13 @@ def spectrum_blackman_harris(M, order=None, coefficients=None):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    count = 21
+    count = 3
 
-    w = poisson(count, 2)
-    w2 = hann(count, causal=False)
-    w3 = hann_poisson(count, 2)
-    w4 = hann_poisson2(count, 2)
+    w = slepian(count, np.pi / 2)
+    #w = poisson(count, 2)
+    #w2 = hann(count, causal=False)
+    #w3 = hann_poisson(count, 2)
+    #w4 = hann_poisson2(count, 2)
     #w = rectangle(count)
     #w = mlt(count)
     #w = hann_poisson(count)
@@ -308,13 +335,13 @@ if __name__ == "__main__":
     #print(w[1])
     #plt.bar(w[0], w[1], width=0.15, color='g')
     #plt.bar(w2[0], w2[1], width=0.1, color='b')
-    plt.plot(w[0], w[1], linestyle = "-.", marker= '.', color='g')
-    plt.plot(w2[0], w2[1], linestyle = "--", marker='o', color='b')
-    plt.plot(w3[0], w3[1], marker='D', color='r')
-    plt.plot(w4[0], w4[1], marker='1', color='m')
-    plt.grid()
-    plt.show()
-    exit(0)
+    #plt.plot(w[0], w[1], linestyle = "-.", marker= '.', color='g')
+    #plt.plot(w2[0], w2[1], linestyle = "--", marker='o', color='b')
+    #plt.plot(w3[0], w3[1], marker='D', color='r')
+    #plt.plot(w4[0], w4[1], marker='1', color='m')
+    #plt.grid()
+    #plt.show()
+    #exit(0)
 
     #spectrum = np.fft.fft(w[1])
     #spectrum = count * util.asinc(count, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
