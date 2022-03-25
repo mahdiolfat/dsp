@@ -293,6 +293,7 @@ def kaiser(M, beta=10):
     M2 = (M - 1) / 2
     wrange = np.linspace(-M2, M2, num=M)
     window = util.bessel_first(beta * np.sqrt(1 - (2 * wrange / M)**2)) / util.bessel_first(beta)
+    return wrange, window
 
 def spectrum_kaiser(M, beta):
     wrange = np.linspace(-M, M, num=2 * M + 1)
@@ -302,16 +303,28 @@ def spectrum_kaiser(M, beta):
     spectrum = term1 * term2
     return wrange, spectrum
 
-def chebyshev(M, Wc):
+def chebyshev(M, ripple):
     '''
+        - ripple in dB
         - alternate: dolph_chebyshev, dolph
         - minimizes the chebyshev norm of the side lobes for a given main-lobe width of 2 * Wc
-        - the transform 
+        - the transform has a closed-form
         - computed as the inverse DFT of its transform
+        - side-lobes are of equal height: ripple in the stop-band
     '''
 
+    wrange = np.arange(M)
+    alpha = ripple / 20
 
-    pass
+    beta = np.cosh(1 / M * np.arccosh(10**alpha))
+
+    arg = beta * np.cos(np.pi * wrange / M)
+    arg = np.clip(arg, -1, 1)
+    num = np.cos(M * np.arccos(arg))
+    denom = np.cosh(M * np.arccosh(beta))
+
+    spectrum = num / denom
+    return np.nan_to_num(spectrum)
 
 def spectrum_chebyshev(M, Wc):
     '''
@@ -341,9 +354,10 @@ def spectrum_blackman_harris(M, order=None, coefficients=None):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    count = 3
+    count = 101
 
-    w = slepian(count, np.pi / 2)
+    w = kaiser(count, beta=np.pi*3)
+    #spectrum = chebyshev(count, 60)
     #w = poisson(count, 2)
     #w2 = hann(count, causal=False)
     #w3 = hann_poisson(count, 2)
@@ -356,15 +370,15 @@ if __name__ == "__main__":
     #print(w[1])
     #w = modulated_lapped_transform(count)
     #print(w[1])
-    #plt.bar(w[0], w[1], width=0.15, color='g')
+    plt.bar(w[0], w[1], width=0.15, color='g')
     #plt.bar(w2[0], w2[1], width=0.1, color='b')
     #plt.plot(w[0], w[1], linestyle = "-.", marker= '.', color='g')
     #plt.plot(w2[0], w2[1], linestyle = "--", marker='o', color='b')
     #plt.plot(w3[0], w3[1], marker='D', color='r')
     #plt.plot(w4[0], w4[1], marker='1', color='m')
-    #plt.grid()
-    #plt.show()
-    #exit(0)
+    plt.grid()
+    plt.show()
+    exit(0)
 
     #spectrum = np.fft.fft(w[1])
     #spectrum = count * util.asinc(count, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
@@ -374,15 +388,16 @@ if __name__ == "__main__":
     ## normalized frequency (cycles / sample)
     #normfreq = np.linspace(-0.5, 0.5, num=1000, endpoint=False)
 
-    #amplitude = np.abs(spectrum)
-    #magnitude = 20 * np.log10(amplitude)
+    spectrum = np.fft.fftshift(spectrum)
+    amplitude = np.abs(spectrum)
+    magnitude = 20 * np.log10(amplitude)
     #plt.figure()
-    #plt.plot(normfreq, spectrum)
-    #plt.figure()
-    #plt.plot(normfreq, amplitude)
+    plt.plot(spectrum)
+    plt.figure()
+    plt.plot(magnitude - np.nanmax(magnitude))
     #plt.figure()
     #plt.plot(normfreq, magnitude - np.nanmax(magnitude))
     ##plt.plot(normfreq, magnitude)
-    #plt.ylim((-60, 0))
+    plt.ylim((-60, 10))
 
-    #plt.show()
+    plt.show()

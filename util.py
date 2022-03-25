@@ -29,5 +29,5 @@ def dft(signal):
 
    wrange = np.arange(len(signal))
 
-def bessel_first(x, terms):
-   return 1
+def bessel_first(x, terms=None):
+   return np.i0(x)
