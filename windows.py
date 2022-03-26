@@ -372,6 +372,39 @@ def spectrum_blackman_harris(M, order=None, coefficients=None):
 
     return window
 
+def spectrum_symmetric(M, w):
+    '''for zero-phase symmetric windows'''
+    L = M - 1 / 2
+    lrange = np.arange(1, L + 1)
+    upper = 2 * np.cos(lrange * w)
+    lower = np.ones((1, 1))
+    return np.concatenate((lower, upper), axis=None)
+
+def optimal_lp(M, Wsb):
+    '''
+        objectives:
+        - symmetric zero-phase
+        - positive window samples (-Ih<=0)
+        - Transform to be 1 at DC
+        - Transform to be within [-delta, delta] in the stop-band
+            - for w_sb <= w <= pi
+        - delta be small
+    '''
+
+    Wsb = np.pi / 8
+
+    k = 1024
+    krange = np.linspace(np.pi / 8, np.pi, num=k)
+
+    L = M - 1 / 2
+    identity = np.identity(L + 1)
+    np.concatenate((identity, np.zeros((L + 1))), axis=1)
+
+    # minimize
+    np.concatenate((np.zeros((1, L)), [1]), axis=None)
+
+
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     count = 21
