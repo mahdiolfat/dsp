@@ -372,9 +372,8 @@ def spectrum_blackman_harris(M, order=None, coefficients=None):
 
     return window
 
-def spectrum_symmetric(M, w):
+def spectrum_symmetric(L, w):
     '''for zero-phase symmetric windows'''
-    L = M - 1 / 2
     lrange = np.arange(1, L + 1)
     upper = 2 * np.cos(lrange * w)
     lower = np.ones((1, 1))
@@ -391,25 +390,45 @@ def optimal_lp(M, Wsb):
         - delta be small
     '''
 
+    # due to symmetry, impulse response h(n) is equal to window w(n) for n >= 0 
+    L = M - 1 / 2
+
+    # positive h(n) includes h(0), so the minimized h(n) has L+1 terms
+    # size of objective column vector is (L + 2, 1)
+
     Wsb = np.pi / 8
 
-    k = 1024
+    k = 100
     krange = np.linspace(np.pi / 8, np.pi, num=k)
 
-    L = M - 1 / 2
-    identity = np.identity(L + 1)
-    np.concatenate((identity, np.zeros((L + 1))), axis=1)
 
     # minimize
-    np.concatenate((np.zeros((1, L)), [1]), axis=None)
+    minimizer = np.concatenate((np.zeros((1, L + 1)), [1]), axis=None)
 
+    # subject to
+    b_eq = np.ones((L + 2, 1))
+    Aeq = np.concatenate((spectrum_symmetric(L, 0), [0]), axis=None)
 
+    upper = np.concatenate((np.identity(L + 1), np.zeros((L + 1, 1))), axis=1)
+    Asb = np.empty((k, L + 1))
+    for w in krange:
+        Asb[w,:] = spectrum_symmetric(L, w)
+
+    Asb = np.concatenate((-Asb, Asb))
+    Asb = np.concatenate((Asb, -np.ones((2 * k))))
+
+    Asb = np.concatenate((upper, Asb))
+    b_lt = np.zeros((Asb.shape[0], 1))
+
+    # solve LP problem
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     count = 21
-
-    w = gaussian(count, count/8)
+    a = spectrum_symmetric(10, 0)
+    print(a)
+    print(len(a))
+    #w = gaussian(count, count/8)
     #spectrum = chebyshev(count, 60)
     #w = poisson(count, 2)
     #w2 = hann(count, causal=False)
@@ -423,15 +442,15 @@ if __name__ == "__main__":
     #print(w[1])
     #w = modulated_lapped_transform(count)
     #print(w[1])
-    plt.bar(w[0], w[1], width=0.15, color='g')
+    #plt.bar(w[0], w[1], width=0.15, color='g')
     #plt.bar(w2[0], w2[1], width=0.1, color='b')
     #plt.plot(w[0], w[1], linestyle = "-.", marker= '.', color='g')
     #plt.plot(w2[0], w2[1], linestyle = "--", marker='o', color='b')
     #plt.plot(w3[0], w3[1], marker='D', color='r')
     #plt.plot(w4[0], w4[1], marker='1', color='m')
-    plt.grid()
-    plt.show()
-    exit(0)
+    #plt.grid()
+    #plt.show()
+    #exit(0)
 
     #spectrum = np.fft.fft(w[1])
     #spectrum = count * util.asinc(count, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
@@ -441,16 +460,16 @@ if __name__ == "__main__":
     ## normalized frequency (cycles / sample)
     #normfreq = np.linspace(-0.5, 0.5, num=1000, endpoint=False)
 
-    spectrum = np.fft.fftshift(spectrum)
-    amplitude = np.abs(spectrum)
-    magnitude = 20 * np.log10(amplitude)
+    #spectrum = np.fft.fftshift(spectrum)
+    #amplitude = np.abs(spectrum)
+    #magnitude = 20 * np.log10(amplitude)
     #plt.figure()
-    plt.plot(spectrum)
-    plt.figure()
-    plt.plot(magnitude - np.nanmax(magnitude))
+    #plt.plot(spectrum)
+    #plt.figure()
+    #plt.plot(magnitude - np.nanmax(magnitude))
     #plt.figure()
     #plt.plot(normfreq, magnitude - np.nanmax(magnitude))
     ##plt.plot(normfreq, magnitude)
-    plt.ylim((-60, 10))
+    #plt.ylim((-60, 10))
 
-    plt.show()
+    #plt.show()
