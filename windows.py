@@ -2,7 +2,7 @@
 
 from matplotlib.pyplot import axis
 import numpy as np
-from scipy import linalg
+from scipy import linalg, optimize
 
 import util
 
@@ -375,9 +375,9 @@ def spectrum_blackman_harris(M, order=None, coefficients=None):
 def spectrum_symmetric(L, w):
     '''for zero-phase symmetric windows'''
     lrange = np.arange(1, L + 1)
-    upper = 2 * np.cos(lrange * w)
+    upper = np.array(2 * np.cos(lrange * w)).reshape((1, L))
     lower = np.ones((1, 1))
-    return np.concatenate((lower, upper), axis=None)
+    return np.concatenate((lower, upper), axis=1)
 
 def optimal_lp(M, Wsb):
     '''
@@ -391,43 +391,59 @@ def optimal_lp(M, Wsb):
     '''
 
     # due to symmetry, impulse response h(n) is equal to window w(n) for n >= 0 
-    L = M - 1 / 2
+    L = int((M - 1) / 2)
+    print(f'L = {L}')
 
     # positive h(n) includes h(0), so the minimized h(n) has L+1 terms
     # size of objective column vector is (L + 2, 1)
 
     Wsb = np.pi / 8
 
-    k = 100
-    krange = np.linspace(np.pi / 8, np.pi, num=k)
-
+    wcount = 10
+    wrange = np.linspace(np.pi / 8, np.pi, num=wcount)
 
     # minimize
-    minimizer = np.concatenate((np.zeros((1, L + 1)), [1]), axis=None)
+    minimizer = np.concatenate((np.zeros((L + 1)), np.ones((1))), axis=None)
+    print(f'minimizer = {minimizer.shape}')
+    print(f'minimizer size = {minimizer.size}')
 
     # subject to
-    b_eq = np.ones((L + 2, 1))
-    Aeq = np.concatenate((spectrum_symmetric(L, 0), [0]), axis=None)
+    b_eq = [1]
+    #print(f'b_eq = {b_eq.shape}')
+    Aeq = np.concatenate((spectrum_symmetric(L, 0), np.zeros((1, 1))), axis=1)
+    print(Aeq)
+    print(f'Aeq = {Aeq.shape}')
 
     upper = np.concatenate((np.identity(L + 1), np.zeros((L + 1, 1))), axis=1)
-    Asb = np.empty((k, L + 1))
-    for w in krange:
-        Asb[w,:] = spectrum_symmetric(L, w)
+    print(f'upper = {upper.shape}')
+    Asb = np.empty((wcount, L + 1))
+    for k, w in enumerate(wrange):
+        Asb[k,:] = spectrum_symmetric(L, w)
+    print(f'Asb = {Asb.shape}')
 
     Asb = np.concatenate((-Asb, Asb))
-    Asb = np.concatenate((Asb, -np.ones((2 * k))))
+    print(f'Asb = {Asb.shape}')
+    Asb = np.concatenate((Asb, -np.ones((2 * wcount, 1))), axis=1)
+    print(f'Asb = {Asb.shape}')
 
     Asb = np.concatenate((upper, Asb))
+    print(f'Asb = {Asb.shape}')
     b_lt = np.zeros((Asb.shape[0], 1))
+    print(f'b_lt = {b_lt.shape}')
 
     # solve LP problem
+    window = optimize.linprog(minimizer, A_ub=Asb, b_ub=b_lt, A_eq=Aeq, b_eq=b_eq)
+    print(window)
+    return window[:-1]
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     count = 21
-    a = spectrum_symmetric(10, 0)
-    print(a)
-    print(len(a))
+    window = optimal_lp(21, Wsb = np.pi / 8)
+    plt.plot(window)
+    #a = spectrum_symmetric(10, 0)
+    #print(a)
+    #print(len(a))
     #w = gaussian(count, count/8)
     #spectrum = chebyshev(count, 60)
     #w = poisson(count, 2)
@@ -448,9 +464,9 @@ if __name__ == "__main__":
     #plt.plot(w2[0], w2[1], linestyle = "--", marker='o', color='b')
     #plt.plot(w3[0], w3[1], marker='D', color='r')
     #plt.plot(w4[0], w4[1], marker='1', color='m')
-    #plt.grid()
-    #plt.show()
-    #exit(0)
+    plt.grid()
+    plt.show()
+    exit(0)
 
     #spectrum = np.fft.fft(w[1])
     #spectrum = count * util.asinc(count, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
