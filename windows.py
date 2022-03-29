@@ -383,11 +383,11 @@ def optimal_lp(M, Wsb):
     '''
         objectives:
         - symmetric zero-phase
-        - positive window samples (-Ih<=0)
-        - Transform to be 1 at DC
+        - positive window samples
+        - Transform amplitude to be 1 at DC
         - Transform to be within [-delta, delta] in the stop-band
             - for w_sb <= w <= pi
-        - delta be small
+        - delta be small (minimize)
     '''
 
     # due to symmetry, impulse response h(n) is equal to window w(n) for n >= 0 
@@ -397,25 +397,18 @@ def optimal_lp(M, Wsb):
     # positive h(n) includes h(0), so the minimized h(n) has L+1 terms
     # size of objective column vector is (L + 2, 1)
 
-    Wsb = np.pi / 8
-
-    wcount = 10
-    wrange = np.linspace(np.pi / 8, np.pi, num=wcount)
+    wcount = 300
+    wrange = np.linspace(Wsb, np.pi, num=wcount)
 
     # minimize
     minimizer = np.concatenate((np.zeros((L + 1)), np.ones((1))), axis=None)
     print(f'minimizer = {minimizer.shape}')
-    print(f'minimizer size = {minimizer.size}')
 
     # subject to
     b_eq = [1]
-    #print(f'b_eq = {b_eq.shape}')
     Aeq = np.concatenate((spectrum_symmetric(L, 0), np.zeros((1, 1))), axis=1)
-    print(Aeq)
     print(f'Aeq = {Aeq.shape}')
 
-    upper = np.concatenate((np.identity(L + 1), np.zeros((L + 1, 1))), axis=1)
-    print(f'upper = {upper.shape}')
     Asb = np.empty((wcount, L + 1))
     for k, w in enumerate(wrange):
         Asb[k,:] = spectrum_symmetric(L, w)
@@ -426,21 +419,149 @@ def optimal_lp(M, Wsb):
     Asb = np.concatenate((Asb, -np.ones((2 * wcount, 1))), axis=1)
     print(f'Asb = {Asb.shape}')
 
-    Asb = np.concatenate((upper, Asb))
-    print(f'Asb = {Asb.shape}')
     b_lt = np.zeros((Asb.shape[0], 1))
     print(f'b_lt = {b_lt.shape}')
 
+    # create [min, max] bound tuples for all decision variables
+    # all window values are >= 0, no bounds on the stop-band amplitude, delta
+    bounds = [(0, None)] * (L + 1)  # impulse responses
+    bounds.append((None, None))  # amplitude in stop band
+
     # solve LP problem
-    window = optimize.linprog(minimizer, A_ub=Asb, b_ub=b_lt, A_eq=Aeq, b_eq=b_eq)
-    print(window)
-    return window[:-1]
+    result = optimize.linprog(minimizer, A_ub=Asb, b_ub=b_lt, A_eq=Aeq, b_eq=b_eq, bounds=bounds)
+    print(result)
+
+    if not result["success"]:
+        return False, None, None
+
+    # construct the negative negative values of the 0-phase window
+    optimized = result["x"]
+    delta = optimized[-1]
+    window = optimized[:-1]
+    window = np.concatenate((window[:0:-1], window), axis=None)
+    return True, delta, window
+
+def optimal_monotonicity(M, Wsb):
+    # due to symmetry, impulse response h(n) is equal to window w(n) for n >= 0 
+    L = int((M - 1) / 2)
+    print(f'L = {L}')
+
+    minimizer = np.concatenate((np.zeros((L + 1)), np.ones((1))), axis=None)
+
+    b_eq = [1]
+    Aeq = np.concatenate((spectrum_symmetric(L, 0), np.zeros((1, 1))), axis=1)
+    print(f'Aeq = {Aeq.shape}')
+
+    wcount = 300
+    wrange = np.linspace(Wsb, np.pi, num=wcount)
+    Asb = np.empty((wcount, L + 1))
+    for k, w in enumerate(wrange):
+        Asb[k,:] = spectrum_symmetric(L, w)
+    print(f'Asb = {Asb.shape}')
+
+    Asb = np.concatenate((-Asb, Asb))
+    print(f'Asb = {Asb.shape}')
+    Asb = np.concatenate((Asb, -np.ones((2 * wcount, 1))), axis=1)
+    print(f'Asb = {Asb.shape}')
+
+    # monotonicity constraint:
+    mono = np.delete(np.diagflat([1] * L, k=1) - np.identity(L + 1), -1, 0)
+    Asb_upper = np.concatenate((mono, np.zeros((mono.shape[0], 1))), axis=1)
+
+    Asb = np.concatenate((Asb_upper, Asb))
+    b_lt = np.zeros((Asb.shape[0], 1))
+    print(f'b_lt = {b_lt.shape}')
+
+    # create [min, max] bound tuples for all decision variables
+    # all window values are >= 0, no bounds on the stop-band amplitude, delta
+    bounds = [(0, None)] * (L + 1)  # impulse responses
+    bounds.append((None, None))  # amplitude in stop band
+
+    # solve LP problem
+    result = optimize.linprog(minimizer, A_ub=Asb, b_ub=b_lt, A_eq=Aeq, b_eq=b_eq, bounds=bounds)
+    print(result)
+
+    if not result["success"]:
+        return False, None, None
+
+    # construct the negative negative values of the 0-phase window
+    optimized = result["x"]
+    delta = optimized[-1]
+    window = optimized[:-1]
+    window = np.concatenate((window[:0:-1], window), axis=None)
+    return True, delta, window
+
+def optimal_lone(M, Wsb, weight=1):
+    ''' L ones is sensitive to all derivatives, not just the largest'''
+    pass
+
+def optimal_linf(M, Wsb, weight=1):
+    ''' smoothness objective 
+        - l-infinity only cares about maximum derivative 
+        - large weight means there is more weight on smoothness vs. side lobe level
+    '''
+    # due to symmetry, impulse response h(n) is equal to window w(n) for n >= 0 
+    L = int((M - 1) / 2)
+    print(f'L = {L}')
+
+    minimizer = np.concatenate((np.zeros((L + 1)), [1, weight]), axis=None)
+
+    b_eq = [1]
+    Aeq = np.concatenate((spectrum_symmetric(L, 0), np.zeros((1, 2))), axis=1)
+    print(f'Aeq = {Aeq.shape}')
+
+    wcount = 300
+    wrange = np.linspace(Wsb, np.pi, num=wcount)
+    Asb = np.empty((wcount, L + 1))
+    for k, w in enumerate(wrange):
+        Asb[k,:] = spectrum_symmetric(L, w)
+    print(f'Asb = {Asb.shape}')
+
+    Asb = np.concatenate((-Asb, Asb))
+    print(f'Asb = {Asb.shape}')
+    Asb = np.concatenate((Asb, -np.ones((2 * wcount, 1))), axis=1)
+    print(f'Asb = {Asb.shape}')
+
+    # monotonicity constraint:
+    linf = np.delete(np.diagflat([1] * L, k=1) - np.identity(L + 1), -1, 0)
+    linf = np.concatenate((-linf, linf))
+
+    Asb_upper = np.concatenate((linf, np.zeros((linf.shape[0], 2))), axis=1)
+    Asb = np.concatenate((Asb, np.zeros((Asb.shape[0], 1))), axis=1)
+
+    Asb = np.concatenate((Asb_upper, Asb))
+    b_lt = np.zeros((Asb.shape[0], 1))
+    print(f'b_lt = {b_lt.shape}')
+
+    # create [min, max] bound tuples for all decision variables
+    # all window values are >= 0, no bounds on the stop-band amplitude, delta
+    bounds = [(0, None)] * (L + 1)  # impulse responses
+    bounds.append((None, None))  # amplitude in stop band
+    bounds.append((None, None))  # L infinity constraint
+
+    # solve LP problem
+    result = optimize.linprog(minimizer, A_ub=Asb, b_ub=b_lt, A_eq=Aeq, b_eq=b_eq, bounds=bounds)
+    print(result)
+
+    if not result["success"]:
+        return False, None, None
+
+    # construct the negative part of the 0-phase window
+    optimized = result["x"]
+    delta = optimized[-1]
+    window = optimized[:-1]
+    window = np.concatenate((window[:0:-1], window), axis=None)
+    return True, delta, window
+    pass
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     count = 21
-    window = optimal_lp(21, Wsb = np.pi / 8)
-    plt.plot(window)
+    L = int((count - 1 ) / 2)
+    success, delta, window = optimal_linf(count, Wsb = np.pi / 8)
+    print(f'window={window}')
+    print(f'delta={delta}')
+    plt.plot(np.linspace(-L, L, num=count), window)
     #a = spectrum_symmetric(10, 0)
     #print(a)
     #print(len(a))
