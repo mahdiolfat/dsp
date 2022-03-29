@@ -493,7 +493,62 @@ def optimal_monotonicity(M, Wsb):
 
 def optimal_lone(M, Wsb, weight=1):
     ''' L ones is sensitive to all derivatives, not just the largest'''
-    pass
+    # due to symmetry, impulse response h(n) is equal to window w(n) for n >= 0 
+    L = int((M - 1) / 2)
+    print(f'L = {L}')
+
+    minimizer = np.concatenate((np.zeros((L + 1)), [1]), axis=None)
+    minimizer = np.concatenate((minimizer, [weight] * L), axis=None)
+    print(f'minimizer = {minimizer.shape}')
+
+    b_eq = [1]
+    Aeq = np.concatenate((spectrum_symmetric(L, 0), np.zeros((1, L + 1))), axis=1)
+    print(f'Aeq = {Aeq.shape}')
+
+    wcount = 300
+    wrange = np.linspace(Wsb, np.pi, num=wcount)
+    Asb = np.empty((wcount, L + 1))
+    for k, w in enumerate(wrange):
+        Asb[k,:] = spectrum_symmetric(L, w)
+    print(f'Asb = {Asb.shape}')
+
+    Asb = np.concatenate((-Asb, Asb))
+    print(f'Asb = {Asb.shape}')
+    Asb = np.concatenate((Asb, -np.ones((2 * wcount, 1))), axis=1)
+    Asb = np.concatenate((Asb, np.zeros((Asb.shape[0], L))), axis=1)
+    print(f'Asb = {Asb.shape}')
+
+    # monotonicity constraint:
+    lone = np.delete(np.diagflat([1] * L, k=1) - np.identity(L + 1), -1, 0)
+    lone = np.concatenate((-lone, lone))
+
+    Asb_upper = np.concatenate((lone, np.zeros((lone.shape[0], 1))), axis=1)
+    Asb_upper = np.concatenate((Asb_upper, -np.ones((Asb_upper.shape[0], L))), axis=1)
+
+    Asb = np.concatenate((Asb_upper, Asb))
+    b_lt = np.zeros((Asb.shape[0], 1))
+    print(f'b_lt = {b_lt.shape}')
+
+    # create [min, max] bound tuples for all decision variables
+    # all window values are >= 0, no bounds on the stop-band amplitude, delta
+    bounds = [(0, None)] * (L + 1)  # impulse responses
+    bounds.append((None, None))  # amplitude in stop band
+    bounds = bounds + [(None, None)] * L  # L one constraint
+
+    # solve LP problem
+    result = optimize.linprog(minimizer, A_ub=Asb, b_ub=b_lt, A_eq=Aeq, b_eq=b_eq, bounds=bounds)
+    print(result)
+
+    if not result["success"]:
+        return False, None, None
+
+    # construct the negative part of the 0-phase window
+    optimized = result["x"]
+    #_sigma = optimized[-1]
+    window = optimized[:L+1]
+    delta = optimized[L+2]
+    window = np.concatenate((window[:0:-1], window), axis=None)
+    return True, delta, window
 
 def optimal_linf(M, Wsb, weight=1):
     ''' smoothness objective 
@@ -520,14 +575,17 @@ def optimal_linf(M, Wsb, weight=1):
     Asb = np.concatenate((-Asb, Asb))
     print(f'Asb = {Asb.shape}')
     Asb = np.concatenate((Asb, -np.ones((2 * wcount, 1))), axis=1)
+    Asb = np.concatenate((Asb, np.zeros((Asb.shape[0], 1))), axis=1)
     print(f'Asb = {Asb.shape}')
 
     # monotonicity constraint:
     linf = np.delete(np.diagflat([1] * L, k=1) - np.identity(L + 1), -1, 0)
+    print(f'linf = {linf.shape}')
     linf = np.concatenate((-linf, linf))
+    print(f'linf = {linf.shape}')
 
-    Asb_upper = np.concatenate((linf, np.zeros((linf.shape[0], 2))), axis=1)
-    Asb = np.concatenate((Asb, np.zeros((Asb.shape[0], 1))), axis=1)
+    Asb_upper = np.concatenate((linf, np.zeros((linf.shape[0], 1))), axis=1)
+    Asb_upper = np.concatenate((Asb_upper, -np.ones((Asb_upper.shape[0], 1))), axis=1)
 
     Asb = np.concatenate((Asb_upper, Asb))
     b_lt = np.zeros((Asb.shape[0], 1))
@@ -548,17 +606,17 @@ def optimal_linf(M, Wsb, weight=1):
 
     # construct the negative part of the 0-phase window
     optimized = result["x"]
-    delta = optimized[-1]
-    window = optimized[:-1]
+    _sigma = optimized[-1]
+    delta = optimized[-2]
+    window = optimized[:-2]
     window = np.concatenate((window[:0:-1], window), axis=None)
     return True, delta, window
-    pass
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     count = 21
     L = int((count - 1 ) / 2)
-    success, delta, window = optimal_linf(count, Wsb = np.pi / 8)
+    success, delta, window = optimal_lone(count, Wsb = np.pi / 8, weight=6)
     print(f'window={window}')
     print(f'delta={delta}')
     plt.plot(np.linspace(-L, L, num=count), window)
