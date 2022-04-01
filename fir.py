@@ -1,60 +1,63 @@
 import numpy as np
+from scipy import signal
 
 '''
 TODO:
 - add notes about transition widths and main-lobe width
 - design filter based on kaiser window method
-- design filter based on remez
 - design filter based on hilbert transform
+- derive and test the bandpass ideal reponse
 '''
 
-def filter_order(A, transition_width, fs=1) -> int:
+def kaiser_filter_order(stop_band, transition_width, fs=1) -> int:
     ''' based on stop-band attenuation A'''
 
-    if (transition_width >= fs / 2):
+    if transition_width >= fs / 2:
         raise ValueError("transition width must be less than half of the sampling frequency")
 
-    if (A > 8):
-        raise ValueError("stop band attenuation must be greater than 8db")
+    if stop_band < 8:
+        raise ValueError(f'stop band attenuation must be greater than 8db, given {stop_band}')
 
     # width rad is between 0 and pi
     width_rad = transition_width / fs * 2 * np.pi
+    print(f'width rad: {width_rad}')
 
-    return int((A - 8) / (2.285 * width_rad))
+    return int((stop_band - 8) / (2.285 * width_rad))
 
-def kaiser_window_design(bands):
+def kaiser_window_design(side_lobe):
     # calculate beta based on side-lob attenuation in dB
-    A = bands[0]
     beta = None
 
-    if A <= 13.26:
+    if side_lobe <= 13.26:
         beta = 0
-    if A > 13.26 and A <= 60:
-        beta = 0.5842*(A - 21)**0.4 + 0.07886*(A - 21)
-    if A > 60:
-        beta = 0.1102*(A - 8.7)
+    if side_lobe > 13.26 and side_lobe <= 60:
+        beta = 0.76609 * (side_lobe - 13.26)**0.4 + 0.09834 * (side_lobe - 13.26)
+    if side_lobe > 60:
+        beta = 0.12438 * (side_lobe + 6.3)
 
     return beta
 
-def kaiser_filter_design(frequencies, band, gains, fs=1):
+def kaiser_filter_design(stop_band):
     # calculate beta based on stop-band attenuation in dB
-    A = band[0]
     beta = None  # for A <= 21
 
-    if A <= 21:
+    if stop_band <= 21:
         beta = 0
-    if A > 21 and A <= 50:
-        beta = 0.5842*(A - 21)**0.4 + 0.07886*(A - 21)
-    if A > 50:
-        beta = 0.1102*(A - 8.7)
+    if stop_band > 21 and stop_band <= 50:
+        beta = 0.5842*(stop_band - 21)**0.4 + 0.07886*(stop_band - 21)
+    if stop_band > 50:
+        beta = 0.1102*(stop_band - 8.7)
 
-    return filter_order(A), beta
+    return beta
 
 def normalized_freq(freq):
     return 2 * np.pi * freq
 
 def lowpass_ideal(fc, taps, fs=1):
-    return fc / fs * np.sinc(2 * fc / fs * np.arange(taps))
+    return 2 * fc / fs * np.sinc(2 * fc / fs * np.arange(taps))
+
+def bandpass_ideal(fc, taps, fs=1):
+    return 2 * fc / fs * np.cos(2 * fc / fs * np.arange(taps)) * np.sinc(2 * fc / fs * np.arange(taps))
 
 def spectrum_lowpass_ideal(fc, fs=1, fcount=None):
     if fcount is None:
@@ -113,25 +116,41 @@ def lowpass(freq_pb, ripple_pb, freq_sb, ripple_sb):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    taps = 30
-    fc = 1/4
-    filter = lowpass_least_squares(fc, taps)
-    filter_spec = 1024 / 12 * np.fft.rfft(filter, 1024, norm="ortho")
-    mag = np.abs(filter_spec)
-    mag_db = 20 * np.log10(mag)
-    norm_db = mag_db - np.nanmax(mag_db)
-    plt.plot(mag)
+
+    fs = 20000
+    bands = [0, 3e3, 4e3, 6e3, 7e3, 0.5*fs]
+    #print(np.min(np.diff(bands)))
+    #print(kaiser_filter_order(80, np.min(np.diff(bands)), fs=20e3))
+    #print(kaiser_filter_design(80))
+
+    M = 101
+    filter = signal.remez(M, bands, [0, 1, 0], Hz=fs)
+    w, h = signal.freqz(filter, [1], worN=2000, fs=fs)
+    amplitude = np.abs(h)
+    plt.plot(w, amplitude) 
     plt.grid()
-    #frange, filter, _ = spectrum_lowpass_ideal(1/4)
-    #plt.plot(frange, filter)
-    #plt.figure()
-    #plt.plot(norm_db)
-    #plt.grid()
-    #plt.figure()
-    #lp = lowpass_ideal(fc, taps)
-    #print(lp)
-    #print(len(lp))
-    #plt.bar(np.arange(taps), lp, width = 0.2)
-    ##plt.bar(np.arange(taps), filter)
-    #plt.grid()
+    plt.figure()
+
+    mag_db = 20 * np.log10(amplitude)
+    norm_db = mag_db - np.nanmax(mag_db)
+    plt.grid()
+    plt.plot(w, norm_db)
     plt.show()
+
+    #fc = 1/4
+    #filter = lowpass_least_squares(fc, taps)
+    #filter_spec = np.fft.rfft(filter, 1024, norm="ortho")
+    #mag = np.abs(filter_spec)
+    #mag_db = 20 * np.log10(mag)
+    #norm_db = mag_db - np.nanmax(mag_db)
+    #plt.plot(mag)
+    #plt.grid()
+    ##frange, filter, _ = spectrum_lowpass_ideal(1/4)
+    ##plt.plot(frange, filter)
+    #plt.figure()
+    ##plt.plot(norm_db)
+    ##plt.grid()
+    ##plt.figure()
+    #plt.bar(np.arange(M), filter)
+    ##plt.grid()
+    #plt.show()
