@@ -1,6 +1,8 @@
 import numpy as np
 from scipy import signal
 
+import windows as win
+
 '''
 TODO:
 - add notes about transition widths and main-lobe width
@@ -8,6 +10,13 @@ TODO:
 - design filter based on hilbert transform
 - derive and test the bandpass ideal reponse
 '''
+
+def hilbert_kernel(t):
+    ''' continuous time '''
+    return 1 / (np.pi * t)
+
+def smallest_fft(ftransition, fs=1):
+    return 10 * fs / ftransition
 
 def kaiser_filter_order(stop_band, transition_width, fs=1) -> int:
     ''' based on stop-band attenuation A'''
@@ -96,6 +105,19 @@ def bandpass_window():
         2. 
         3. compute the kaiser window using the estimated length and beta
     '''
+    pass
+
+def bandpass_remez(bands):
+
+    M = 101
+    fs = 20000
+    bands = [0, 3e3, 4e3, 6e3, 7e3, 0.5*fs]
+    filter = signal.remez(M, bands, [0, 1, 0], Hz=fs)
+    w, h = signal.freqz(filter, [1], worN=2000, fs=fs)
+    amplitude = np.abs(h)
+    mag_db = 20 * np.log10(amplitude)
+    norm_db = mag_db - np.nanmax(mag_db)
+    return w, h, norm_db
 
 def bandpass_hilbert():
     '''
@@ -114,28 +136,73 @@ def lowpass(freq_pb, ripple_pb, freq_sb, ripple_sb):
     transition_width = freq_sb - freq_pb
     stopband_attenuation = 20*np.log10(ripple_sb)
 
+def example_hilbert():
+    count = 257
+    N = 4096
+    fs = 22050
+    f1 = 530  # transition bandwidth
+    beta = 8
+
+    fn = fs / 2 # nyquest
+    f2 = fn - f1  # upper transition bandwidth
+
+    # lower-band edge in bins
+    k1 = round(N * f1 / fs)
+    if k1 < 2:
+        # cannot have dc or fn response
+        k1 = 2
+
+    k1 = int(k1)
+
+    # bin index at nyquest limit, N even
+    kn = N / 2 + 1
+
+    # high-frequency band edge
+    k2 = kn - k1 + 1
+    k2 = int(k2)
+
+    print(k1, k2, f1, f2)
+
+    # quantized band-edge frequencies
+    f1 = k1 * fs / N
+    f2 = k2 * fs / N
+
+    print(k1, k2, f1, f2)
+
+    wrange, impluse = win.kaiser(count, beta=beta)
+    plt.plot(wrange, impluse)
+
+    # ideal frequency response
+    a = np.concatenate(((np.arange(k1-1) / (k1 - 1))**8, np.ones((k2-k1+1))))
+
+    b = np.concatenate(((np.arange(k1-2, -1, -1) / (k1 - 1))**8, np.zeros((N//2-1))))
+    c = np.concatenate((a, b))
+
+    plt.figure()
+    plt.plot(c)
+
+    impulse_response = np.fft.ifft(c)
+    plt.figure()
+    hodd = np.imag(impulse_response[::2])
+    #ierr = 
+    plt.plot(np.fft.ifftshift(np.real(impulse_response)))
+
+    response = np.fft.fft(impluse, N)
+    gain = np.abs(response)
+    gain_db = 20*np.log10(gain)
+    gain_db = gain_db - np.nanmax(gain_db)
+    plt.figure()
+    plt.plot(np.fft.fftshift(gain_db))
+    plt.show()
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    fs = 20000
-    bands = [0, 3e3, 4e3, 6e3, 7e3, 0.5*fs]
+    example_hilbert()
+
     #print(np.min(np.diff(bands)))
     #print(kaiser_filter_order(80, np.min(np.diff(bands)), fs=20e3))
     #print(kaiser_filter_design(80))
-
-    M = 101
-    filter = signal.remez(M, bands, [0, 1, 0], Hz=fs)
-    w, h = signal.freqz(filter, [1], worN=2000, fs=fs)
-    amplitude = np.abs(h)
-    plt.plot(w, amplitude) 
-    plt.grid()
-    plt.figure()
-
-    mag_db = 20 * np.log10(amplitude)
-    norm_db = mag_db - np.nanmax(mag_db)
-    plt.grid()
-    plt.plot(w, norm_db)
-    plt.show()
 
     #fc = 1/4
     #filter = lowpass_least_squares(fc, taps)
