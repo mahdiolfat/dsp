@@ -2,6 +2,7 @@ import numpy as np
 from scipy import signal
 
 import windows as win
+import util
 
 '''
 TODO:
@@ -12,7 +13,9 @@ TODO:
 '''
 
 def hilbert_kernel(t):
-    ''' continuous time '''
+    ''' continuous time
+        - the transform is non-causal time invariant filter
+    '''
     return 1 / (np.pi * t)
 
 def smallest_fft(ftransition, fs=1):
@@ -120,8 +123,11 @@ def bandpass_remez(bands):
     return w, h, norm_db
 
 def bandpass_hilbert():
-    '''
-
+    ''' single-sideband filter design
+        - omega for a window is its main-lobe width in rad/sample
+        - using the window method, it is required that
+            - there is a transition band between dc and omga or higher
+            - second transition bandwidth betwee np.pi - omega and np.pi
     '''
 
 def lowpass(freq_pb, ripple_pb, freq_sb, ripple_sb):
@@ -138,7 +144,9 @@ def lowpass(freq_pb, ripple_pb, freq_sb, ripple_sb):
 
 def example_hilbert():
     count = 257
-    N = 4096
+    N = util.nextpow2(count * 8)
+
+    print(f'fft count={N}')
     fs = 22050
     f1 = 530  # transition bandwidth
     beta = 8
@@ -156,6 +164,7 @@ def example_hilbert():
 
     # bin index at nyquest limit, N even
     kn = N / 2 + 1
+    print(f'bin index at nyquest limit, N even. kn={kn}')
 
     # high-frequency band edge
     k2 = kn - k1 + 1
@@ -169,9 +178,6 @@ def example_hilbert():
 
     print(k1, k2, f1, f2)
 
-    wrange, impluse = win.kaiser(count, beta=beta)
-    plt.plot(wrange, impluse)
-
     # ideal frequency response
     a = np.concatenate(((np.arange(k1-1) / (k1 - 1))**8, np.ones((k2-k1+1))))
 
@@ -182,12 +188,41 @@ def example_hilbert():
     plt.plot(c)
 
     impulse_response = np.fft.ifft(c)
-    plt.figure()
+
+    # this should be zero
     hodd = np.imag(impulse_response[::2])
-    #ierr = 
+    ierr = np.linalg.norm(hodd)/np.linalg.norm(impulse_response)
+    print(f'Numerical round-off error = {ierr}')
+    aerr = np.linalg.norm(impulse_response[N//2-N//32:N//2+N//32])/np.linalg.norm(impulse_response)
+    print(f'Time aliasing = {aerr}')
+
+    plt.figure()
     plt.plot(np.fft.ifftshift(np.real(impulse_response)))
 
-    response = np.fft.fft(impluse, N)
+    plt.figure()
+    plt.plot(np.fft.ifftshift(np.imag(impulse_response)))
+
+    wrange, winimpulse = win.kaiser(count, beta=beta)
+    #plt.figure()
+    #plt.plot(wrange, winimpulse)
+
+    # put the kaiser window in zero-phase form:
+    wzp1 = winimpulse[count // 2:]
+    wzp2 = np.zeros(N - count)
+    wzp3 = winimpulse[:count // 2]
+    wzp = np.concatenate((wzp1, wzp2, wzp3))
+
+    plt.figure()
+    plt.plot(wzp)
+
+    hw = np.fft.ifftshift(wzp * impulse_response)
+    plt.figure()
+    plt.plot(hw)
+
+    # causal version
+    #hh = 
+
+    response = np.fft.fft(hw)
     gain = np.abs(response)
     gain_db = 20*np.log10(gain)
     gain_db = gain_db - np.nanmax(gain_db)

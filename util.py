@@ -33,5 +33,8 @@ def dft(signal):
 
     wrange = np.arange(len(signal))
 
+def nextpow2(N) -> int:
+    return int(2**np.ceil(np.log2(N)))
+
 def bessel_first(x, terms=None):
     return np.i0(x)

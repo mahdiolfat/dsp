@@ -6,6 +6,23 @@ from scipy import linalg, optimize
 
 import util
 
+def mainlobe_width_rectangle(M, fs=1):
+    # rectangle window has the tightest main-lobe width
+    return 2 * fs / M
+
+def mainlobe_width_kaiser(M, beta, fs=1):
+    alpha = beta / np.pi
+    return alpha * 2 * fs / M
+
+def mainlobe_width_poisson(M, alpha, fs=1):
+    return alpha * 2 * fs / M
+
+def mainlobe_width_poisson(M, alpha, fs=1):
+    return alpha * 2 * fs / M
+
+def mainlobe_width_hamming(M, fs=1):
+    return 4 * fs / M
+
 def spectrum_hamming(M, alpha, beta):
     omega = 2 * np.pi / M
     samplepoints = 1000
@@ -26,6 +43,7 @@ class window():
         self._spectrum = None
         self._magnitude = None
         self._amplitude = None
+        self._mainlobe = None
         self._side_lob = None
         self._roll_off = None
         self._periodic = None # for overlap+add
