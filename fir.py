@@ -115,7 +115,7 @@ def bandpass_remez(bands):
     M = 101
     fs = 20000
     bands = [0, 3e3, 4e3, 6e3, 7e3, 0.5*fs]
-    filter = signal.remez(M, bands, [0, 1, 0], Hz=fs)
+    filter = signal.remez(M, bands, [0, 1, 0], fs=fs)
     w, h = signal.freqz(filter, [1], worN=2000, fs=fs)
     amplitude = np.abs(h)
     mag_db = 20 * np.log10(amplitude)
@@ -142,7 +142,53 @@ def lowpass(freq_pb, ripple_pb, freq_sb, ripple_sb):
     transition_width = freq_sb - freq_pb
     stopband_attenuation = 20*np.log10(ripple_sb)
 
-def example_hilbert():
+def example_hilbert_robust_remez():
+    '''
+        1. use the Remez exchange algorithm to design a lowpass filter
+        2. modulation thee lowpass impulse-response by a complex sinusoid at frequency fs/4
+    '''
+    count = 257
+    fs = 22050
+    fn = fs / 2 # nyquest
+    f1 = 530  # transition bandwidth
+    f2 = fn - f1  # upper transition bandwidth
+
+    count = 257
+    bands = [0, f2 - fs / 4, fs / 4, fn]
+    lpfir = signal.remez(count, bands, [1, 0], [1, 10], fs=fs)
+
+    # modulate lowpass to single-sideband
+    #csin = np.array([1j])
+    modsin = np.power(np.full((count), 1j), np.arange(count))
+    fir = lpfir * modsin
+
+    response = np.fft.fft(fir, 4096)
+    gain = np.abs(response)
+    gain_db = 20*np.log10(gain)
+    gain_db = gain_db - np.nanmax(gain_db)
+    plt.plot(np.fft.fftshift(gain_db))
+    plt.show()
+
+def example_hilbert_direct_remez():
+    '''
+        remez exchange algorithm struggles with hilbert type of numtaps > ~200
+    '''
+    count = 101
+    fs = 22050
+    fn = fs / 2 # nyquest
+    f1 = 530  # transition bandwidth
+    f2 = fn - f1  # upper transition bandwidth
+
+    bands = [f1, f2]
+    fir = signal.remez(count - 1, bands, [1], type='hilbert', fs=fs)
+    response = np.fft.fft(fir, 4096)
+    gain = np.abs(response)
+    gain_db = 20*np.log10(gain)
+    gain_db = gain_db - np.nanmax(gain_db)
+    plt.plot(np.fft.fftshift(gain_db))
+    plt.show()
+
+def example_hilbert_window():
     count = 257
     N = util.nextpow2(count * 8)
 
@@ -215,12 +261,12 @@ def example_hilbert():
     plt.figure()
     plt.plot(wzp)
 
-    hw = np.fft.ifftshift(wzp * impulse_response)
+    hw = wzp * impulse_response
     plt.figure()
-    plt.plot(hw)
+    plt.plot(np.real(hw))
 
-    # causal version
-    #hh = 
+    # final causal version 
+    hh = np.concatenate((hw[N - (count - 1) // 2: N - 1], hw[:count // 2]))
 
     response = np.fft.fft(hw)
     gain = np.abs(response)
@@ -233,7 +279,7 @@ def example_hilbert():
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    example_hilbert()
+    example_hilbert_window()
 
     #print(np.min(np.diff(bands)))
     #print(kaiser_filter_order(80, np.min(np.diff(bands)), fs=20e3))
