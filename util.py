@@ -38,3 +38,27 @@ def nextpow2(N) -> int:
 
 def bessel_first(x, terms=None):
     return np.i0(x)
+
+def quad_peak(ym1, y0, yp1):
+    '''
+        return the extremum location peak, height y, and half-curvature a of a parabolic fit through three points
+        parabola is  given by y(x) = a * (x - p)**2 + b
+        parabola is given by y(x)=y=m1, y(0)=y0, y(1)=yp1
+        p ranges [-1/2 to 1/2]
+    '''
+    p = (yp1 - ym1) / (2 * (2 * y0 - yp1 - ym1))
+    y = y0 - 0.25 * (ym1 - yp1) * p
+    a = 0.5 * (ym1 - 2 * y0 + yp1)
+
+    return p, y, a
+
+def quad_peak_freq_estimate(k, ym1, y0, yp1, N, fs=1):
+    '''
+        - k is the estimated bin with max frequency
+        - N is FFT size
+        - fs is sampling frequency
+
+        return frequency in fs Hz
+    '''
+    p, _, _ = quad_peak(ym1, y0, yp1)
+    return (k + p) * fs / N

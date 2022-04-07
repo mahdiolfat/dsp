@@ -6,6 +6,10 @@ from scipy import linalg, optimize
 
 import util
 
+def frequency_sample(M):
+    ''' Normalized Frequency sampling resolution: radians per sample '''
+    return 2 * np.pi / M
+
 def mainlobe_width_rectangle(M, fs=1):
     # rectangle window has the tightest main-lobe width
     return 2 * fs / M
@@ -22,6 +26,42 @@ def mainlobe_width_poisson(M, alpha, fs=1):
 
 def mainlobe_width_hamming(M, fs=1):
     return 4 * fs / M
+
+def mainlobe_width_hann(M, fs=1):
+    return 4 * fs / M
+
+def mainlobe_width_generalized_hamming(M, fs=1):
+    return 4 * fs / M
+
+def mainlobe_width_blackman(M, fs=1):
+    return 6 * fs / M
+
+def mainlobe_width_l_term_blackman(M, L, fs=1):
+    return 2 * L * fs / M
+
+# main lobe width-in-bins
+main_lobe_factor = {
+    'rectangle': 2,
+    'hamming': 4,
+    'hann': 4,
+    'blackman': 4,
+}
+
+# empirical (tight) minimum main lobe width-in-bins
+main_lobe_factor_tight = {
+    'rectangle': 1.44,
+    'hamming': 2.22,
+    'hann': 2.36,
+    'blackman': 2.02,
+}
+
+def peak_resolution_length(f1, f2, window='rectangle', tight=False, fs=1) -> int:
+    ''' to resolve the frequencies f1 and f2,
+        the window length M mustt span aat least K periods of the difference frequency f2 - f1'''
+    factors = main_lobe_factor_tight if not tight else main_lobe_factor
+
+    factor = factors[window]
+    return np.ceil(factor * fs / np.abs(f2 - f1))
 
 def spectrum_hamming(M, alpha, beta):
     omega = 2 * np.pi / M
@@ -54,6 +94,8 @@ class window():
         self._curvature = None
         self._normalized_amplitude = True
         self._normalized_frequency = True
+        self._side_lob_width = None
+        self._main_lob_width = None
 
     @property
     def phase(self):
@@ -303,10 +345,12 @@ def kaiser(M, beta=10):
         - reduces to rectangular window for beta = 0
         - asymptotic roll-off is 6dB/octave
         - first NULL in transforrm is at w0 = 2 * beta / M
-        - time-bandwidth product w0(M/2) = beta radians if bandwidths are measured from 0 to positive band-limit
+        - time-bandwidth product w0(M/2) = beta radians if bandwidths are measured from 0 to positive band-limit (fs / 2 or the nyquest frequency)
         - full time-bandwidth product (2*w0)M = 4 * beta radians when frequency bandwidth is defined as main-lobe width out to first null
-        - can be parametrized by alpha, where alpha = beta / pi. Alpha is half the window's time baandwidth product in cycle (sec * cycles/sec)
+        - can be parametrized by alpha, where alpha = beta / pi. Alpha is half the window's time bandwidth product in cycle (sec * cycles/sec)
         - for beta = 0, it reduces to the rectangle window
+        - as alpha (beta) increases, the dB side-lovee level reduced ~linearly with main-love width increaase (approximately a 25dB drop in
+          side-love level for each main-lobe widht increase by one sinc-main-lobe)
     '''
     M2 = (M - 1) / 2
     wrange = np.linspace(-M2, M2, num=M)
@@ -355,7 +399,9 @@ def gaussian_norm(M, alpha):
         - note: on a dB scale, Gaussians are quadratic: parabolic interpolation of a sampled Gaussian transform is exact
         - the spectrum transforms to itself
         - it achieves the minimmum time-bandwidth product, sigma_t * sigma_w = sigma * 1 / sigma = 1
-        - Gaussian has infinite duration, so must be truncated
+        - Gaussian has infinite duration, so must be truncated (window it)
+        - Literature suggests a triangular window raised to some power alpha, which preserves the absense of side lobes
+          for sufficiently large alpha. It also preserves the non-negativity of the transform
     '''
 
     M2 = (M - 1) / 2
@@ -365,7 +411,7 @@ def gaussian_norm(M, alpha):
 
 def gaussian(M, sigma):
     '''
-        - sigma should be specified aas a fraaction of the window length, e.g., M/8
+        - sigma should be specified aas a fraction of the window length, e.g., M/8
     '''
     M2 = (M - 1) / 2
     wrange = np.linspace(-M2, M2, num=M)
