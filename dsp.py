@@ -4,22 +4,43 @@ import scipy.signal
 import scipy.linalg
 import matplotlib.pyplot as plt
 
-class dsp:
-    @staticmethod
-    def autocorrelation(signal):
-        '''
-        The unbiased cross-correlation of a signal with itself
-        '''
-        autocorrelation = [np.mean(signal * np.roll(signal, shift))
-                           for shift in range(signal.size)]
+def sample_variance(signal):
+    pass
 
-        variance = autocorrelation[0]
-        print(f'Signal Variance: {variance}, {np.var(signal)}')
-        return autocorrelation
+def acyclic_autocorrelation(signal):
+    '''
+    '''
 
-    @staticmethod
-    def powerspectrum(signal):
-        return np.fft.fft(dsp.autocorrelation(signal))
+def cyclic_autocorrelation(signal):
+    '''
+    '''
+
+def sample_autocorrelation(signal):
+    '''
+        the cross correlation of a signal with itself is the biased autocorrelation
+        the fourier transform of the biased autocorrelation is simply the squared-magnitude of the Fourier transform of the signal
+        the bias is a multiplication of the unbiased sample autocorrelation by a Bartlett (triangular) window
+        since the Fourier transform of a Barlett window is asinc**2, the DTFT of thee biased autocorrelation is a smoothed version
+        of the unbiased PSD (convolved with asinc**2)
+    '''
+    pass
+
+def autocorrelation(signal):
+    '''
+    The cross-correlation of a signal with itself -> biased autocorrelation
+    '''
+    autocorrelation = [np.mean(signal * np.roll(signal, shift))
+                        for shift in range(signal.size)]
+
+    variance = autocorrelation[0]
+    print(f'Signal Variance: {variance}, {np.var(signal)}')
+    return autocorrelation
+
+def powerspectrum(signal):
+    '''
+        using the simple (biased) autocorrelation, this is the squared magnitude of the signal spectrum
+    '''
+    return np.fft.fft(autocorrelation(signal))
 
 def pisarenko(signal, order, autocorrelation=None):
     '''

@@ -39,30 +39,6 @@ def mainlobe_width_blackman(M, fs=1):
 def mainlobe_width_l_term_blackman(M, L, fs=1):
     return 2 * L * fs / M
 
-# main lobe width-in-bins
-main_lobe_factor = {
-    'rectangle': 2,
-    'hamming': 4,
-    'hann': 4,
-    'blackman': 4,
-}
-
-# empirical (tight) minimum main lobe width-in-bins
-main_lobe_factor_tight = {
-    'rectangle': 1.44,
-    'hamming': 2.22,
-    'hann': 2.36,
-    'blackman': 2.02,
-}
-
-def peak_resolution_length(f1, f2, window='rectangle', tight=False, fs=1) -> int:
-    ''' to resolve the frequencies f1 and f2,
-        the window length M mustt span aat least K periods of the difference frequency f2 - f1'''
-    factors = main_lobe_factor_tight if not tight else main_lobe_factor
-
-    factor = factors[window]
-    return np.ceil(factor * fs / np.abs(f2 - f1))
-
 def spectrum_hamming(M, alpha, beta):
     omega = 2 * np.pi / M
     samplepoints = 1000
