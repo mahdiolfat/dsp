@@ -62,3 +62,35 @@ def quad_peak_freq_estimate(k, ym1, y0, yp1, N, fs=1):
     '''
     p, _, _ = quad_peak(ym1, y0, yp1)
     return (k + p) * fs / N
+
+def unwrap_spectral_phase(phase):
+    '''
+    unwrap the phase to make it continuous
+    starting from dc phase
+    '''
+
+    N = len(phase)
+    unwrapped = np.zeros((N))
+    phase1 = phase[0]
+    unwrapped[0] = phase1
+
+    phase0 = 0
+    pi2 = np.pi * 2
+
+    threshold = np.pi - np.finfo().eps
+
+    for idx in np.arange(1, N):
+        phasenext = phase[idx] + phase0
+        phasediff = phasenext - phase1
+        while phasediff > threshold:
+            phase0 -= pi2
+            phasediff -= pi2
+
+        while phasediff < -threshold:
+            phase0 += pi2
+            phasediff += pi2
+        phasenext = phase[idx] + phase0
+        phase1 = phasenext
+        unwrapped[idx] = phasenext
+
+    return unwrapped
