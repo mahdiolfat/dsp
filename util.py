@@ -3,12 +3,12 @@
 import numpy as np
 
 def gain_to_db(gain):
-    return 20 * log10(gain)
+    return 20 * np.log10(gain)
 
 def asinc(M, w):
-    '''The Aliasied Sinc function, defined as the sampled Rectanlge Window.
+    '''The Aliasied Sinc function, defined as the sampled Rectangle Window.
        asinc becomes the sinc function in the limit as sampling rate -> inf'''
-    ''' handle the case where w = 0'''
+    ''' TODO: handle the case where w = 0'''
     denom = w / 2 
     num = denom * M
     return np.sin(num) / (M * np.sin(denom))

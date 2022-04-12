@@ -11,6 +11,17 @@ def white(count, mean=0, sd=1, swing=None):
 def test_white_noise(signal):
     ''' Test whether or not a set of samples can be well modeled as a white noise:
         - compute its sample autocorrelation and verify that it approaches an impulse in the limit as the number of samples becomes large
+        - equivilently, its periodogram should be constant
+    '''
+
+def pink(count):
+    ''' filtered white noise where the amplitude response is proportional to 1/sqrt(f) and PSD is proportional to 1/f
+    also known as "1/f noise" or "equal loudness noise"
+    '''
+
+def brown(count):
+    ''' filtered white noise where the amplitude response is proportional to 1/f and PSD is proportional to 1/f**2
+    also known as "brownian motion" or "Wiener process" or "random increments"
     '''
 
 if __name__ == '__main__':

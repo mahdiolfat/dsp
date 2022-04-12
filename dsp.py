@@ -17,12 +17,32 @@ def cyclic_autocorrelation(signal):
 
 def sample_autocorrelation(signal):
     '''
-        the cross correlation of a signal with itself is the biased autocorrelation
-        the fourier transform of the biased autocorrelation is simply the squared-magnitude of the Fourier transform of the signal
-        the bias is a multiplication of the unbiased sample autocorrelation by a Bartlett (triangular) window
-        since the Fourier transform of a Barlett window is asinc**2, the DTFT of thee biased autocorrelation is a smoothed version
-        of the unbiased PSD (convolved with asinc**2)
+        - the cross correlation of a signal with itself is the biased autocorrelation
+          the fourier transform of the biased autocorrelation is simply the squared-magnitude of the Fourier transform of the signal
+          the bias is a multiplication of the unbiased sample autocorrelation by a Bartlett (triangular) window
+          since the Fourier transform of a Barlett window is asinc**2, the DTFT of thee biased autocorrelation is a smoothed version
+          of the unbiased PSD (convolved with asinc**2), the smoothing which is desired for statistical stability when analysing the PSD
+
+        - The area under the PSD is the contribution of variance from the given frequency range
+
+        Practical algorithm for a length M sequence:
+            1. Choose the FFT size N  to be a power of 2 providing at least M - 1 samples of zero padding (N > 2 * M - 1)
+            2. perform a length N FFT
+            3. compute the squared magnitude
+            4. compute the inverse FFT
+            5. if desired, remove the bias by inverting the implicit Barlett-window weighting
     '''
+    pass
+
+def periodogram(signal):
+    '''
+        In the limist aas M goes to infinity, the expected value of the periodogram equals the true power spectral density
+        From the periodogram we should be able to recover a filter, which when used to filter white noise, creates a noise indistinguishable
+        statistically from the observed sequence.
+    '''
+    pass
+
+def welch(signal):
     pass
 
 def autocorrelation(signal):
