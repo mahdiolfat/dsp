@@ -3,7 +3,7 @@
 import numpy as np
 
 def gain_to_db(gain):
-    return 20 * np.log10(gain)
+    return 10 * np.log10(gain)
 
 def asinc(M, w):
     '''The Aliasied Sinc function, defined as the sampled Rectangle Window.

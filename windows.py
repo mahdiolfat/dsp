@@ -217,7 +217,7 @@ def blackman_harris(M):
     '''
     return blackman_generalized(M, coefficients=[0.4243801, 0.4973406, 0.00782793])
 
-def spectrum_barlett(M):
+def spectrum_bartlett(M):
     return ((M - 1) / 2)**2 * util.asinc((M - 1) / 2, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
 
 def power_of_cosine(M, order):
@@ -235,7 +235,7 @@ def power_of_cosine(M, order):
 
     return wrange, window
 
-def barlett(M, endpoint_zeros=False):
+def bartlett(M, endpoint_zeros=False):
     '''
         - convolution of two length (M - 1) / 2 rectangular windows
         - main lobe twice as wide as that of a rectangular window of length M

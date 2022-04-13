@@ -1,11 +1,16 @@
 import numpy as np
 import scipy as sp
-import scipy.signal
-import scipy.linalg
 import matplotlib.pyplot as plt
+import windows
+
+def autocorrelation_unbiased(signal):
+    count = len(signal)
+    bias = windows.bartlett(count + 1)[1] * count
+    return np.correlate(signal, signal, mode='full') / bias
 
 def sample_variance(signal):
-    pass
+    signal = signal - np.mean(signal)
+    return 1 / len(signal) * np.sum(np.pow(signal, 2))
 
 def acyclic_autocorrelation(signal):
     '''
@@ -13,6 +18,7 @@ def acyclic_autocorrelation(signal):
 
 def cyclic_autocorrelation(signal):
     '''
+        Cyclic autocorrelation can be turned acyclic with zero-padding by a factor of 2 
     '''
 
 def sample_autocorrelation(signal):
@@ -20,7 +26,7 @@ def sample_autocorrelation(signal):
         - the cross correlation of a signal with itself is the biased autocorrelation
           the fourier transform of the biased autocorrelation is simply the squared-magnitude of the Fourier transform of the signal
           the bias is a multiplication of the unbiased sample autocorrelation by a Bartlett (triangular) window
-          since the Fourier transform of a Barlett window is asinc**2, the DTFT of thee biased autocorrelation is a smoothed version
+          since the Fourier transform of a bartlett window is asinc**2, the DTFT of thee biased autocorrelation is a smoothed version
           of the unbiased PSD (convolved with asinc**2), the smoothing which is desired for statistical stability when analysing the PSD
 
         - The area under the PSD is the contribution of variance from the given frequency range
@@ -30,19 +36,38 @@ def sample_autocorrelation(signal):
             2. perform a length N FFT
             3. compute the squared magnitude
             4. compute the inverse FFT
-            5. if desired, remove the bias by inverting the implicit Barlett-window weighting
+            5. if desired, remove the bias by inverting the implicit bartlett-window weighting
     '''
     pass
 
-def periodogram(signal):
+def periodogram_direct(signal, window=None):
     '''
-        In the limist aas M goes to infinity, the expected value of the periodogram equals the true power spectral density
+        Defined as the squared-magnitude DTFT of the windowed signal divided by number of samples
+        The periodogram is equal to thee smoothed sample PSD. In the time domain, the autocorrelation function corresponding
+        to the periodogram is the Bartlett windowed sample autocorrelation.
+
+        The division by the number of samples can be interpreted as normalizing the peak of the implicit Bartlett window
+        on the autocorrelation function to 1. Or as a normalization of the Fourier transform  itself, converting a power
+        spectrum (squared-magnitude FFT) to a power spectral density.
+
+        In the limit as M goes to infinity, the expected value of the periodogram equals the true power spectral density
         From the periodogram we should be able to recover a filter, which when used to filter white noise, creates a noise indistinguishable
         statistically from the observed sequence.
+
+        Window is typically a rectangle
     '''
-    pass
+
+    return np.abs(np.fft.fft(signal))**2 / len(signal)
+
+def periodogram_sample(signal, window=None):
+    '''
+        same as the direct method except that zero padding is used for stability
+    '''
 
 def welch(signal):
+    '''
+        Also called the periodogram method
+    '''
     pass
 
 def autocorrelation(signal):
@@ -61,53 +86,6 @@ def powerspectrum(signal):
         using the simple (biased) autocorrelation, this is the squared magnitude of the signal spectrum
     '''
     return np.fft.fft(autocorrelation(signal))
-
-def pisarenko(signal, order, autocorrelation=None):
-    '''
-    Pisarenko's method for frequency estimation
-    Process is assumed to consist of order complex exponentials in white noise
-
-    signal: signal with additive white noise
-
-    TODO:
-        - use covariance
-        - handle 0-meaning iput data, or just calculate the covariance
-    '''
-    if autocorrelation is None:
-        # estimate the (order + 1) x (order + 1) autocorrelation matrix
-        autocorrelation = dsp.autocorrelation(signal)
-
-    # autocorrelation sequence MUST be of size > order + 1
-    # only the first (order + 1) of the autocorrelation sequence is used
-    rx = np.array(autocorrelation[:order + 1])
-
-    # (order + 1) x (order + 1) hermitian toeplitz autocorrelation matrix
-    autocorrelation_matrix = scipy.linalg.toeplitz(rx)
-    print(autocorrelation_matrix)
-
-    # since autocorrelation matrix is hermitian toeplitz, eigenvalues are non-negative real
-    eval, evec = np.linalg.eigh(autocorrelation_matrix)
-    print(f'Eigenvalues: {eval}')
-    print("Eigenvectors: ", evec)
-
-    # there is only one noise vector
-    # it is the column vector corresponding to the minimum eigenvalue
-    # the minimum eigenvalue absolute value is the variance of the additive white noise
-    vmin_i = np.argmin(eval)
-    variance = eval[vmin_i]
-    print(f'Min eigenval (variance of white noise): {variance}')
-    # noise vector
-    vmin = evec[:,vmin_i]
-    eigenfilter = scipy.signal.tf2zpk([1], vmin)
-    print("Eigenfilter: ", eigenfilter)
-
-    # estimated frequencies
-    freqs = np.arccos(np.angle(eigenfilter[1]) / 2)
-
-    # there are (order) signal vectors
-    # TODO: calculate power associated with each signal vector
-
-    return freqs, variance
 
 if __name__ == "__main__":
     SAMPLE_COUNT = 1024
