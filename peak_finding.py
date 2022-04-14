@@ -108,3 +108,27 @@ def pisarenko(signal, order, autocorrelation=None):
     # TODO: calculate power associated with each signal vector
 
     return freqs, variance
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
+    SAMPLE_COUNT = 1024
+    space = np.linspace(0, 10*2*np.pi, SAMPLE_COUNT)
+    var = 0.01
+    noise = np.random.normal(0, np.sqrt(var), SAMPLE_COUNT)
+    sig = np.sin(space) + noise
+    mean = np.mean(sig)
+    print(f'Process Mean: {mean}')
+    # zero-mean the process
+    sig -= mean
+
+    ac = np.array([6, 1.92705 + 4.58522j, -3.42705 + 3.49541j])
+    freqs, variance = pisarenko(sig, 2)
+
+    print(f'Frequencies: {freqs}')
+    print(f'Variance: {variance}')
+
+    plt.figure(0)
+    plt.plot(space, sig)
+    plt.grid()
+    plt.show()

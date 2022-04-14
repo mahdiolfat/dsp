@@ -1,7 +1,10 @@
 import numpy as np
 import scipy as sp
-import matplotlib.pyplot as plt
 import windows
+import noise
+
+def ola_framecount(signal_length, frame_length, hop_size):
+    return np.floor((signal_length - frame_length) / hop_size) + 1
 
 def autocorrelation_unbiased(signal):
     count = len(signal)
@@ -64,9 +67,14 @@ def periodogram_sample(signal, window=None):
         same as the direct method except that zero padding is used for stability
     '''
 
-def welch(signal):
+def welch_periodogram(signal, window):
     '''
         Also called the periodogram method
+    '''
+    pass
+
+def welch_autocorrelation(signal, window):
+    '''
     '''
     pass
 
@@ -88,29 +96,33 @@ def powerspectrum(signal):
     return np.fft.fft(autocorrelation(signal))
 
 if __name__ == "__main__":
-    SAMPLE_COUNT = 1024
-    space = np.linspace(0, 10*2*np.pi, SAMPLE_COUNT)
-    var = 0.01
-    noise = np.random.normal(0, np.sqrt(var), SAMPLE_COUNT)
-    sig = np.sin(space) + noise
-    mean = np.mean(sig)
-    print(f'Process Mean: {mean}')
-    # zero-mean the process
-    sig -= mean
+    import matplotlib.pyplot as plt
 
-    ac = np.array([6, 1.92705 + 4.58522j, -3.42705 + 3.49541j])
-    freqs, variance = pisarenko(sig, 2)
+    M = 32
+    Ks = [1, 128]
+    for K in Ks:
+        # zero pad to make acyclic
+        Nfft = 2 * M
+        # PSD accumulator
+        Sv = np.zeros(Nfft)
+        # per frame
+        for m in range(K):
+            v = noise.white(M)
+            V = np.fft.fft(v, Nfft)
+            # same as conj(V) .* V since abs is taken first
+            Vms = np.abs(V)**2
+            Sv = Sv + Vms
 
-    print(f'Frequencies: {freqs}')
-    print(f'Variance: {variance}')
-    #ps = dsp.powerspectrum(sig)
-    #peaks, _ = scipy.signal.find_peaks(sig)
-    #if len(peaks):
-        #print(sig[peaks])
-
-    plt.figure(0)
-    plt.plot(space, sig)
-    #plt.figure(1)
-    #plt.plot(ps)
-    plt.grid()
+        # average of all scaled periodograms
+        Sv = Sv / K
+        # average bartlett-windowed sample autocorrelation
+        rv = np.fft.ifft(Sv)
+        rvup = np.concatenate((np.conj(rv[Nfft-M:]), np.conj(rv[:M+1])))
+        # normalize for no bias at lag 0
+        rvup = rvup / M
+        plt.figure()
+        plt.plot(np.abs(Sv / M))
+        plt.ylim(0, 5)
+        plt.figure()
+        plt.plot(np.abs(rvup))
     plt.show()

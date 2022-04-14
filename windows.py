@@ -39,6 +39,23 @@ def mainlobe_width_blackman(M, fs=1):
 def mainlobe_width_l_term_blackman(M, L, fs=1):
     return 2 * L * fs / M
 
+def overlap_rectangular(frame_size):
+    ''' for rectangular window, hop-size can equal frame length with no overlap'''
+    return frame_size
+
+def overlap_blackman(frame_size):
+    '''for non-rectangular windows, hope-size caannot exceed half the frame length'''
+    if frame_size % 2 == 0:
+        # even
+        return frame_size / 2 - 1
+    else:
+        return (frame_size - 1) / 2
+
+def overlap_hamming(frame_size):
+    '''for non-rectangular windows, hope-size caannot exceed half the frame length
+    typical hop-size'''
+    return frame_size / 3
+
 def spectrum_hamming(M, alpha, beta):
     omega = 2 * np.pi / M
     samplepoints = 1000
