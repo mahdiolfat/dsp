@@ -1,7 +1,10 @@
-import numpy as np
-import scipy as sp
+from regex import W
 import windows
 import noise
+import util
+
+import numpy as np
+import scipy as sp
 
 def ola_framecount(signal_length, frame_length, hop_size):
     return np.floor((signal_length - frame_length) / hop_size) + 1
@@ -70,6 +73,7 @@ def periodogram_sample(signal, window=None):
 def welch_periodogram(signal, window_length, window_count):
     '''
         Also called the periodogram method
+        COLA(M) implementation with a rectangle window
     '''
     M = window_length
     # zero pad to make acyclic
@@ -132,6 +136,43 @@ def welch_example():
         plt.ylim(0, 5)
         plt.figure()
         plt.plot(np.abs(rvup))
+
+def stft(signal, window, window_length, window_count, hop_size):
+    '''
+    Assuming - M is the analysis window legth, odd sized
+             - N is a power of two larger than M.
+
+        1. grab the data frame, time normalize about 0
+        2. multiply time normalized frame from 1. by the spectrum analysis window to obtain the mth timee-normalized windowed data frame
+        3. zero-pad the frame, 0's on each side for a size N, time-normalized dataset, until a factor of N/M zero-padding is aachieved
+        4. take length N FFT to obtain the time-normalized frequency-sampled STFT at time m, with w_k = 2 * pi * k * fs / N, k is the bin number
+        5. if needed, remove the time normalization via a linear phase term (phase = -mR, shift right by mR), this yields the sampled STFT
+
+        NOTE: there is no irreversible time-aliasing wheen the STFT frequency axis w is sampled to the points w_k, provided thee FFT size N
+        is greeater than or equal to the window length M.
+    '''
+
+    # assume odd
+    M = len(window)
+    Mo2 = (M - 1) / 2
+    # add Mo2 leading zeros to the signal so the last frame doesn't go out of range
+
+    N = util.nextpow2(len(signal))
+
+    # pre-allocate STFT output array
+    Xtwz = np.zeros((N, window_count))
+
+    padding = np.zeros(N-M)
+    offset = 0
+    for m in range(window_count):
+        # grab the fram
+        xt = signal[offset:offset+M]
+        # apply the window
+        xtw = window * xt
+        # zero-pad
+        xtwz = np.concatenate((xtw[Mo2:M], padding, xtw[:Mo2]))
+        Xtwz[:,m] = np.fft.fft(xtwz)
+        offset += hop_size
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
