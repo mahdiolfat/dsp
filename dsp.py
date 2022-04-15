@@ -67,11 +67,37 @@ def periodogram_sample(signal, window=None):
         same as the direct method except that zero padding is used for stability
     '''
 
-def welch_periodogram(signal, window):
+def welch_periodogram(signal, window_length, window_count):
     '''
         Also called the periodogram method
     '''
-    pass
+    M = window_length
+    # zero pad to make acyclic
+    Nfft = 2 * M
+    # PSD accumulator
+    Sv = np.zeros(Nfft)
+    # per frame
+    start = 0
+    end = window_length
+    for _ in range(window_count):
+        v = signal[start:end]
+        V = np.fft.fft(v, Nfft)
+        # same as conj(V) .* V since abs is taken first
+        Vms = np.abs(V)**2
+        Sv = Sv + Vms
+        start = end
+        end = end + window_length
+
+    # average of all scaled periodograms
+    Sv = Sv / window_count
+    # average bartlett-windowed sample autocorrelation
+    rv = np.fft.ifft(Sv)
+    rvup = np.concatenate((np.conj(rv[Nfft-M:]), np.conj(rv[:M+1])))
+    # normalize for no bias at lag 0
+    rvup = rvup / M
+    Sv = Sv / M
+
+    return Sv, rvup
 
 def welch_autocorrelation(signal, window):
     '''
@@ -95,34 +121,20 @@ def powerspectrum(signal):
     '''
     return np.fft.fft(autocorrelation(signal))
 
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-
+def welch_example():
     M = 32
     Ks = [1, 128]
     for K in Ks:
-        # zero pad to make acyclic
-        Nfft = 2 * M
-        # PSD accumulator
-        Sv = np.zeros(Nfft)
-        # per frame
-        for m in range(K):
-            v = noise.white(M)
-            V = np.fft.fft(v, Nfft)
-            # same as conj(V) .* V since abs is taken first
-            Vms = np.abs(V)**2
-            Sv = Sv + Vms
-
-        # average of all scaled periodograms
-        Sv = Sv / K
-        # average bartlett-windowed sample autocorrelation
-        rv = np.fft.ifft(Sv)
-        rvup = np.concatenate((np.conj(rv[Nfft-M:]), np.conj(rv[:M+1])))
-        # normalize for no bias at lag 0
-        rvup = rvup / M
+        Sv, rvup = welch_periodogram(noise.white(K * M), M, K)
         plt.figure()
-        plt.plot(np.abs(Sv / M))
+        plt.plot(np.abs(Sv))
+        # for zero-meaned white noise, autocorrrelation should be equal variance = 1
         plt.ylim(0, 5)
         plt.figure()
         plt.plot(np.abs(rvup))
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
+    welch_example()
     plt.show()
