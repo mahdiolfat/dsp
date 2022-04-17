@@ -94,3 +94,10 @@ def unwrap_spectral_phase(phase):
         unwrapped[idx] = phasenext
 
     return unwrapped
+
+def chirp(t0, f0, t1, f1, analytic=False):
+    beta = (f1 - f0) / t1
+    if analytic:
+        return np.exp( 1j * (2 * np.pi * (0.5 * beta * t0**2 + f0 * t0)))
+    else: # real
+        return np.cos(2 * np.pi * (0.5 * beta * t0**2 + f0 * t0))

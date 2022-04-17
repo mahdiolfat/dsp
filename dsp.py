@@ -4,7 +4,7 @@ import noise
 import util
 
 import numpy as np
-import scipy as sp
+import scipy.signal
 
 def ola_framecount(signal_length, frame_length, hop_size):
     return np.floor((signal_length - frame_length) / hop_size) + 1
@@ -153,7 +153,7 @@ def stft(signal, window, window_length, window_count, hop_size):
     '''
 
     # assume odd
-    M = len(window)
+    M = window_length
     Mo2 = (M - 1) / 2
     # add Mo2 leading zeros to the signal so the last frame doesn't go out of range
 
@@ -165,17 +165,46 @@ def stft(signal, window, window_length, window_count, hop_size):
     padding = np.zeros(N-M)
     offset = 0
     for m in range(window_count):
-        # grab the fram
+        # grab the frame
         xt = signal[offset:offset+M]
         # apply the window
         xtw = window * xt
         # zero-pad
         xtwz = np.concatenate((xtw[Mo2:M], padding, xtw[:Mo2]))
+        # fft and accumulate
         Xtwz[:,m] = np.fft.fft(xtwz)
         offset += hop_size
+
+    return Xtwz
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    welch_example()
+    # number of filters
+    N = 10
+    fs = 1000
+    # duration in seconds
+    D = 1
+    # signal duration in samples
+    L = int(np.ceil(fs * D) + 1)
+    # discrete time axis in samples
+    n = np.arange(L)
+    # discrete time axis in seconds
+    t = n / fs
+    #plt.plot(np.real(util.chirp(t, 0, D, fs/2)))
+    x = util.chirp(t, 0, D, fs/2)
+    # rectangular
+    # h = np.ones((N))
+    # hamming
+    h = windows.hamming(N)
+    X = np.zeros((N, L))
+    for k in range(N):
+        wk = 2 * np.pi * k / N
+        # modulation by complex exponential
+        xk = np.exp(-1j * wk * n) * x
+        X[k,:] = scipy.signal.lfilter(h, 1, xk)
+        plt.figure()
+        plt.plot(np.abs(X[k]))
+
+    #welch_example()
     plt.show()
