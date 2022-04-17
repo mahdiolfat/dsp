@@ -194,9 +194,9 @@ if __name__ == "__main__":
     #plt.plot(np.real(util.chirp(t, 0, D, fs/2)))
     x = util.chirp(t, 0, D, fs/2)
     # rectangular
-    # h = np.ones((N))
+    h = np.ones((N))
     # hamming
-    h = windows.hamming(N)
+    #h = windows.hamming(N)
     X = np.zeros((N, L))
     for k in range(N):
         wk = 2 * np.pi * k / N
