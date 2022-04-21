@@ -1,4 +1,3 @@
-from regex import W
 import windows
 import noise
 import util
@@ -150,6 +149,9 @@ def stft(signal, window, window_length, window_count, hop_size):
 
         NOTE: there is no irreversible time-aliasing wheen the STFT frequency axis w is sampled to the points w_k, provided thee FFT size N
         is greeater than or equal to the window length M.
+
+        Since the STFT offers only one integration time (the window length), it implements a uniform baandpass filter bank, i.e., spectral samples
+        are uniformly spaced and correspond to equal bandwidths.
     '''
 
     # assume odd
@@ -177,9 +179,7 @@ def stft(signal, window, window_length, window_count, hop_size):
 
     return Xtwz
 
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-
+def filter_bank_example():
     # number of filters
     N = 10
     fs = 1000
@@ -206,5 +206,101 @@ if __name__ == "__main__":
         plt.figure()
         plt.plot(np.abs(X[k]))
 
+def overlap_add_fft():
+    '''
+        A summation of separately filtered windows.
+        Frames MUST overlap.
+    '''
+
+def convolution_acyclic(x, h, N=None):
+    '''
+        The acyclic convolution of Nx samples with Nh samples produces at most Nx + Nh - 1 nonzero samples
+
+        To embed acyclic convolution within a cyclic convolution (ie fft), zero-paad both operands out to length N,
+        where N >= Nx + Nh - 1
+
+        If we don't add enough zeros, some of the convolution terms "wrap around" and add back upon other (due to module indexing).
+        This can be called time-domain aliasing!
+        Zero-paadding in the time  domain results in more samples (closer spacing over the unit circle) in the frequency domain, ie.,
+        a higher sampling  rate in the frequency domain.
+    '''
+
+    nx = len(x)
+    nh = len(h)
+    nfft = N if N is not None else util.nextpow2(nx + nh - 1)
+    # zero pad signal and filter
+    xzp = np.concatenate((x, np.zeros(nfft-nx)))
+    hzp = np.concatenate((h, np.zeros(nfft-nh)))
+    X = np.fft.fft(xzp)
+    H = np.fft.fft(hzp)
+
+    Y = X * H
+
+    # get zero padded acyclic convolution
+    y = np.real(np.fft.ifft(Y))
+    # trim zeros
+    yt = y[:nx+nh-1]
+
+    return yt
+
+def conv_timing():
+    #x = [1, 2, 3, 4]
+    #h = [1, 1, 1]
+    x = np.arange(12000)
+    h = np.arange(2000)
+
+    yt = convolution_acyclic(x, h, N=16384)
+
+def conv_timing_np():
+    #x = [1, 2, 3, 4]
+    #h = [1, 1, 1]
+    x = np.arange(12000)
+    h = np.arange(2000)
+
+    yt = np.convolve(x, h)
+
+def conv_timing_spfft():
+    #x = [1, 2, 3, 4]
+    #h = [1, 1, 1]
+    x = np.arange(12000)
+    h = np.arange(2000)
+
+    yt = scipy.signal.fftconvolve(x, h)
+
+def convolution_acyclic_example_compare():
+    x = [1, 2, 3, 4]
+    h = [1, 1, 1]
+
+    yt = convolution_acyclic(x, h)
+    print(f'yt={yt}')
+
+    # compare
+    yc_conv = np.convolve(x, h)
+    print(f'yc_conv={yc_conv}')
+    yc_fft = scipy.signal.fftconvolve(x, h)
+    print(f'yc_fft={yc_fft}')
+
+    print(timeit.timeit("conv_timing()", number=1000, setup="from __main__ import conv_timing"))
+    print(timeit.timeit("conv_timing_np()", number=1000, setup="from __main__ import conv_timing_np"))
+    print(timeit.timeit("conv_timing_spfft()", number=1000, setup="from __main__ import conv_timing_spfft"))
+
+def convolution_acyclic_example_filter():
+    x = [1, 2, 3, 4]
+    h = [1, 1, 1]
+
+    yt = convolution_acyclic(x, h)
+    print(f'yt={yt}')
+
+    # compare
+    yc_conv = np.convolve(x, h)
+    print(f'yc_conv={yc_conv}')
+    yc_fft = scipy.signal.fftconvolve(x, h)
+    print(f'yc_fft={yc_fft}')
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    import timeit
+
+    convolution_acyclic_example_compare()
     #welch_example()
     plt.show()
