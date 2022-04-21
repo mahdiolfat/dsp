@@ -23,7 +23,7 @@ def pink(count):
     '''
     filter_num = [0.049922035, -0.095993537, 0.050612699, -0.004408786]
     filter_den = [1, -2.494956002, 2.017265875, -0.522189400]
-    # location of the first pole at 60dB, indicating end of transiet reponse
+    # location of the first pole at 60dB, indicating end of transient reponse
     nT60 = int(np.round(np.log10(1000) / (1 - max(np.abs(np.roots(filter_den))))))
     wnoise = white(count+nT60, variance=1)
     pnoise = signal.lfilter(filter_num, filter_den, wnoise)
