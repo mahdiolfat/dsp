@@ -56,7 +56,7 @@ def overlap_hamming(frame_size):
     typical hop-size'''
     return frame_size / 3
 
-def spectrum_hamming(M, alpha, beta):
+def spectrum_hamming(M, alpha=0.54, beta=0.46):
     omega = 2 * np.pi / M
     samplepoints = 1000
     domain_1 = np.linspace(-np.pi, np.pi, num=samplepoints, endpoint=False)
@@ -671,6 +671,7 @@ def optimal_linf(M, Wsb, weight=1):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+
     count = 21
     L = int((count - 1 ) / 2)
     success, delta, window = optimal_lone(count, Wsb = np.pi / 8, weight=6)

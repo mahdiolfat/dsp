@@ -276,10 +276,67 @@ def example_hilbert_window():
     plt.plot(np.fft.fftshift(gain_db))
     plt.show()
 
+def example_lp_fft():
+    '''low-pass filterr by FFT convolution'''
+    # signal is a sum of sinusoidal components
+    f = [440, 880, 1000, 2000]
+    # signal length
+    M = 256
+    Fs = 5000
+
+    x = np.zeros(M)
+    n = np.arange(M)
+
+    for fk in f:
+        x += np.sin(2 * np.pi * n * fk / Fs)
+
+    plt.figure()
+    # input signal amplitude response
+    plt.plot(np.fft.fftshift(np.abs(np.fft.fft(x, 1024))))
+
+    # filter params
+    L = 257
+    fc = 600
+
+    # using the window method:
+    Lo2 = (L-1) // 2
+    hsupp = np.linspace(-Lo2, Lo2, num=L)
+    hideal = 2 * fc / Fs * np.sinc(2 * fc * hsupp / Fs)
+    _, hamm = win.hamming(L)
+    h = hamm * hideal
+    # filter impulse response
+    plt.figure()
+    plt.plot(h)
+    #plt.figure()
+    # filter magnitude response in dB
+    #plt.plot(20 * np.log10(np.fft.fftshift(np.abs(np.fft.fft(h, 1024)))))
+
+    # apply filtering
+    Nfft = util.nextpow2(L + M - 1)
+    print(f'Nfft={Nfft}')
+    # zero pad
+    xzp = np.concatenate((x, np.zeros(Nfft-M)))
+    hzp = np.concatenate((h, np.zeros(Nfft-L)))
+
+    X = np.fft.fft(xzp)
+    H = np.fft.fft(hzp)
+
+    Y = X * H
+
+    y = np.fft.ifft(Y)
+    #relrmserr = np.norm()
+    #print(relrms)
+
+    y = np.real(y)
+    plt.figure()
+    plt.plot(y)
+    plt.show()
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    example_hilbert_window()
+    #example_hilbert_window()
+    example_lp_fft()
 
     #print(np.min(np.diff(bands)))
     #print(kaiser_filter_order(80, np.min(np.diff(bands)), fs=20e3))
