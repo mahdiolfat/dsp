@@ -67,7 +67,7 @@ def spectrum_hamming(M, alpha=0.54, beta=0.46):
     spectrum = M * transform
     return spectrum
 
-class window():
+class Window():
     '''Spectrum analysis window'''
 
     def __init__(self, count, phase, fs = None, **kwargs) -> None:
@@ -669,8 +669,37 @@ def optimal_linf(M, Wsb, weight=1):
     window = np.concatenate((window[:0:-1], window), axis=None)
     return True, delta, window
 
+def is_cola(window, hop, span):
+    ''' Test that the overlap-adds to a constant'''
+    # TODO: just pick an appropriate span to cover all overlaps
+
+    # always true for hop = 1
+    if hop == 1:
+        return True
+
+    M = len(window)
+    s = np.zeros(span)
+
+    olas = []
+    for so in range(0, span - M + 1, hop):
+        ola = s[so:so+M] + window
+        s[so:so+M] = ola
+        olas.append(ola)
+
+    # remove bias: the hop from the beginning and the end
+    s = s[hop:-hop-2]
+
+    s = np.around(s, 5)
+    return np.all(s == s[0])
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+
+    M = 32
+    R = (M) // 2
+    _, window = hamming(M, periodic=True)
+    print(is_cola(window, R, 3 * M))
+    exit()
 
     count = 21
     L = int((count - 1 ) / 2)
