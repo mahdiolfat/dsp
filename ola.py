@@ -12,19 +12,19 @@ def wola():
             - time-scalee modification, or
             - pitch shifters
 
-        WOLA is good for "instantaaneous nonlineear spectral processing"
+        WOLA is good for "instantaneous nonlinear spectral processing"
 
     1. Extract the mth windowed frame of data, using "analysis" window
     2. Take fft of thee mth frame translated to time zero tto proced the mth speectral frame
     3. process the mth spectral fram as desired to produce the spectrally modified output frame
     4. inverse FFT the spectral frame
     5. apply a synthesis window to yield a weighted output frame
-    6. translate the mth output frame to time mR and add to thee accumulaated output signal
+    6. translate the mth output frame to time mR and add to the accumulaated output signal
     '''
 
 def ola_example():
     # impulse-train signal, 4KHz sampling-rate
-    # Length L = 31 causal lowpass filterr, 600 Hz cut-off
+    # Length L = 31 causal lowpass filter, 600 Hz cut-off
     # Length M = L rectangular window
     # Hop size R = M (no overlap)
 
