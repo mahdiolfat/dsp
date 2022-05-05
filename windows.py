@@ -44,7 +44,7 @@ def overlap_rectangular(frame_size):
     return frame_size
 
 def overlap_blackman(frame_size):
-    '''for non-rectangular windows, hope-size caannot exceed half the frame length'''
+    '''for non-rectangular windows, hope-size cannot exceed half the frame length'''
     if frame_size % 2 == 0:
         # even
         return frame_size / 2 - 1
@@ -669,6 +669,20 @@ def optimal_linf(M, Wsb, weight=1):
     window = np.concatenate((window[:0:-1], window), axis=None)
     return True, delta, window
 
+def is_spectrum_cola(spectrum, hop):
+    '''
+    Weak COLA: window transform has zeros at frame-rate harmonics
+        - perfect OLA reconstruction
+        - relies on aaliasingg cancellation in frequency domain
+        - aliasing cancellation is disturbed by spectral modifications
+    Strong COLA:
+        - perfect OLAA reconstruction
+        - no aliasing
+        - betterr for spectral modifications
+        - time domain window infinitely long in ideal cases
+    '''
+    pass
+
 def is_cola(window, hop, span):
     ''' Test that the overlap-adds to a constant'''
     # TODO: just pick an appropriate span to cover all overlaps
@@ -687,19 +701,65 @@ def is_cola(window, hop, span):
         olas.append(ola)
 
     # remove bias: the hop from the beginning and the end
-    s = s[hop:-hop-2]
+    s = s[hop:-hop-3]
 
     s = np.around(s, 5)
+    plt.plot(s)
     return np.all(s == s[0])
+
+def hamming_overlap_example():
+    fs = 1
+    M = 33
+    _, w = hamming(M)
+    R = (M - 1) // 2
+    # periodic hamming for COLA
+    w[-1] = 0
+
+    # frame rate with fs=1
+    N = 6 * M
+
+    # dc (COLA) term
+    sp = np.array(np.ones(N) * np.sum(w) / R, dtype=complex)
+
+    ubound = sp[0]
+    lbound = ubound
+
+    n = np.arange(N)
+    # traverse frame-rate harmonics
+    for k in range(1, R):
+        # the frame-rate harmonic
+        csin = np.exp(1j * 2 * np.pi * fs * k / R * n)
+
+        # exact window transform at this harmonic (fs * k / R)
+        Wf = np.matmul(w, np.conj(csin[:M]))
+        # contribution to OLA hum
+        hum = Wf * csin
+
+        # poisson summation into OLA
+        sp += hum / R
+
+        # update upper/lower bounds
+        Wfb = np.abs(Wf)
+        ubound += Wfb / R
+        lbound -= Wfb / R
+
+    # expect sp to be zero to machine precision
+    plt.plot(sp)
+    plt.show()
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    M = 32
-    R = (M) // 2
-    _, window = hamming(M, periodic=True)
-    print(is_cola(window, R, 3 * M))
-    exit()
+    hamming_overlap_example()
+    exit
+    #print(hamming(10))
+    #M = 33
+    #R = (M - 1) // 2
+    #_, window = hamming(M)
+    #window[-1] = 0
+    #print(is_cola(window, R, 3 * M))
+    #plt.show()
+    #exit()
 
     count = 21
     L = int((count - 1 ) / 2)

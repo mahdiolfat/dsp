@@ -191,19 +191,20 @@ def filter_bank_example():
     n = np.arange(L)
     # discrete time axis in seconds
     t = n / fs
-    #plt.plot(np.real(util.chirp(t, 0, D, fs/2)))
-    x = util.chirp(t, 0, D, fs/2)
+    x = util.chirp(t, 0, D, fs/2, analytic=True)
+    plt.plot(np.real(x))
     # rectangular
-    h = np.ones((N))
+    #h = np.ones((N))
     # hamming
-    #h = windows.hamming(N)
-    X = np.zeros((N, L))
+    _, h = windows.hamming(N)
+    X = np.zeros((N, L), dtype=complex)
     for k in range(N):
         wk = 2 * np.pi * k / N
         # modulation by complex exponential
         xk = np.exp(-1j * wk * n) * x
         X[k,:] = scipy.signal.lfilter(h, 1, xk)
         plt.figure()
+        plt.ylim(0, 6)
         plt.plot(np.abs(X[k]))
 
 def overlap_add_fft():
@@ -301,6 +302,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import timeit
 
-    convolution_acyclic_example_compare()
+    filter_bank_example()
+    #convolution_acyclic_example_compare()
     #welch_example()
     plt.show()

@@ -9,14 +9,14 @@ def wola():
     '''
         Useful for nonlinear "instantaneous" FFT processors such as:
             - perceptual audio coders
-            - time-scalee modification, or
+            - time-scale modification, or
             - pitch shifters
 
         WOLA is good for "instantaneous nonlinear spectral processing"
 
     1. Extract the mth windowed frame of data, using "analysis" window
     2. Take fft of thee mth frame translated to time zero tto proced the mth speectral frame
-    3. process the mth spectral fram as desired to produce the spectrally modified output frame
+    3. process the mth spectral frame as desired to produce the spectrally modified output frame
     4. inverse FFT the spectral frame
     5. apply a synthesis window to yield a weighted output frame
     6. translate the mth output frame to time mR and add to the accumulaated output signal
