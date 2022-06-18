@@ -101,3 +101,21 @@ def chirp(t0, f0, t1, f1, analytic=False):
         return np.exp( 1j * (2 * np.pi * (0.5 * beta * t0**2 + f0 * t0)))
     else: # real
         return np.cos(2 * np.pi * (0.5 * beta * t0**2 + f0 * t0))
+
+def chirplet(duration, f0, t1, f1, sigma=1, fs=1):
+    ''' Gaussian Windowed Chrip '''
+    t0 = np.arange(0, duration, 1/fs)
+    x = chirp(t0, f0, t1, f1)
+    M = len(x)
+    print(M)
+    M2 = (M) // 2
+    n = np.linspace(-M2, M2, M)
+    w = np.exp(-n * n / (2 * sigma * sigma))
+    xw = w * x
+    return xw
+
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+
+    plt.plot(chirplet(0.1, 1000, 1, 2000, fs=8000))
+    plt.show()
