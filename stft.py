@@ -9,9 +9,9 @@ import util
 def spectral_envelope_cepstrum(sig, f0, fs=1):
     # spectral envelope by the Cepstral Windowing Method
     # compute log magnitude spectrum
-    # inverse FFT to obbtain the real cepstrum
+    # inverse FFT to obtain the real cepstrum
     # lowpass-window the cepstrum
-    # perform fFT to obbtain the smoothed log-magnitude spectrum
+    # perform FFT to obtain the smoothed log-magnitude spectrum
 
     # 40ms analysis window
     Nframe = util.nextpow2(fs / 25)
