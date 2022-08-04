@@ -22,7 +22,7 @@ def filter_bank(X):
 
     N = len(X)
 
-    # lower spectral samples for band k
+    # lower/higher spectral samples for band k
     lsn = N / 2
     hsn = N / 2
     bandK = X[lsn:hsn]
