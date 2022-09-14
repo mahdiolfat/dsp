@@ -149,7 +149,7 @@ def example_hilbert_robust_remez():
     '''
     count = 257
     fs = 22050
-    fn = fs / 2 # nyquest
+    fn = fs / 2 # nyquist
     f1 = 530  # transition bandwidth
     f2 = fn - f1  # upper transition bandwidth
 
@@ -157,7 +157,7 @@ def example_hilbert_robust_remez():
     bands = [0, f2 - fs / 4, fs / 4, fn]
     lpfir = signal.remez(count, bands, [1, 0], [1, 10], fs=fs)
 
-    # modulate lowpass to single-sideband
+    # modulate (shift along frequency axis) lowpass to single-sideband
     #csin = np.array([1j])
     modsin = np.power(np.full((count), 1j), np.arange(count))
     fir = lpfir * modsin
@@ -165,7 +165,7 @@ def example_hilbert_robust_remez():
     response = np.fft.fft(fir, 4096)
     gain = np.abs(response)
     gain_db = 20*np.log10(gain)
-    gain_db = gain_db - np.nanmax(gain_db)
+    gain_db -= np.nanmax(gain_db)
     plt.plot(np.fft.fftshift(gain_db))
     plt.show()
 
@@ -209,7 +209,7 @@ def example_hilbert_window():
     k1 = int(k1)
 
     # bin index at nyquest limit, N even
-    kn = N / 2 + 1
+    kn = N // 2 + 1
     print(f'bin index at nyquest limit, N even. kn={kn}')
 
     # high-frequency band edge
@@ -230,7 +230,7 @@ def example_hilbert_window():
     b = np.concatenate(((np.arange(k1-2, -1, -1) / (k1 - 1))**8, np.zeros((N//2-1))))
     c = np.concatenate((a, b))
 
-    plt.figure()
+    plt.figure("Ideal freq response")
     plt.plot(c)
 
     impulse_response = np.fft.ifft(c)
@@ -242,10 +242,10 @@ def example_hilbert_window():
     aerr = np.linalg.norm(impulse_response[N//2-N//32:N//2+N//32])/np.linalg.norm(impulse_response)
     print(f'Time aliasing = {aerr}')
 
-    plt.figure()
+    plt.figure("Impulse Response - Real")
     plt.plot(np.fft.ifftshift(np.real(impulse_response)))
 
-    plt.figure()
+    plt.figure("Impulse Response - Imaginary")
     plt.plot(np.fft.ifftshift(np.imag(impulse_response)))
 
     wrange, winimpulse = win.kaiser(count, beta=beta)
@@ -258,22 +258,31 @@ def example_hilbert_window():
     wzp3 = winimpulse[:count // 2]
     wzp = np.concatenate((wzp1, wzp2, wzp3))
 
-    plt.figure()
-    plt.plot(wzp)
+    plt.figure("Kaiser Window")
+    plt.plot(np.fft.fftshift(wzp))
 
     hw = wzp * impulse_response
-    plt.figure()
-    plt.plot(np.real(hw))
+    plt.figure("Filtered - Time Domain")
+    plt.plot(np.real(np.fft.fftshift(hw)))
 
     # final causal version 
     hh = np.concatenate((hw[N - (count - 1) // 2: N - 1], hw[:count // 2]))
 
+    plt.figure("Filtered - Time Domain - hh")
+    plt.plot(np.real(hh))
+
+    plt.figure("Filtered - Time Domain")
+    plt.plot(np.real(np.fft.fftshift(hw)))
+
     response = np.fft.fft(hw)
     gain = np.abs(response)
+    phase = np.angle(response)
     gain_db = 20*np.log10(gain)
     gain_db = gain_db - np.nanmax(gain_db)
-    plt.figure()
+    plt.figure("Filtered - Spectrum - Gain (db)")
     plt.plot(np.fft.fftshift(gain_db))
+    plt.figure("Filtered - Spectrum - Phase (rad)")
+    plt.plot(np.fft.fftshift(phase))
     plt.show()
 
 def example_lp_fft():
@@ -289,6 +298,9 @@ def example_lp_fft():
 
     for fk in f:
         x += np.sin(2 * np.pi * n * fk / Fs)
+
+    plt.figure()
+    plt.plot(x)
 
     plt.figure()
     # input signal amplitude response
@@ -307,9 +319,10 @@ def example_lp_fft():
     # filter impulse response
     plt.figure()
     plt.plot(h)
-    #plt.figure()
+
+    plt.figure()
     # filter magnitude response in dB
-    #plt.plot(20 * np.log10(np.fft.fftshift(np.abs(np.fft.fft(h, 1024)))))
+    plt.plot(20 * np.log10(np.fft.fftshift(np.abs(np.fft.fft(h, 1024)))))
 
     # apply filtering
     Nfft = util.nextpow2(L + M - 1)
@@ -335,8 +348,9 @@ def example_lp_fft():
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    #example_hilbert_window()
-    example_lp_fft()
+    example_hilbert_window()
+    #example_lp_fft()
+    #example_hilbert_robust_remez()
 
     #print(np.min(np.diff(bands)))
     #print(kaiser_filter_order(80, np.min(np.diff(bands)), fs=20e3))

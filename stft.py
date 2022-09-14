@@ -155,4 +155,4 @@ def spectral_envelope_example():
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    spectral_envelope_example()
+    spectral_envelope_cepstrum()

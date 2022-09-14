@@ -24,7 +24,7 @@ UNITY_AMPLITUDE = 0.1
 
 def random_phase_multisine(N, P=1, gain=1, fs=1, process=None):
     '''
-        N: number of samples in one signal period
+        N: number of "time samples" in one signal period
 
         P: number of time domain periods to generate
 
@@ -35,21 +35,33 @@ def random_phase_multisine(N, P=1, gain=1, fs=1, process=None):
         Phase mean drawn from the random process must = 0
     '''
 
+    # spectral resolution = 2*pi / N
+
+    # F is the number of unique spectral lines between [0, fs/2)
     if process is None:
-        process = np.random.default_rng(123)
+        process = np.random.default_rng()
 
-    #k = process.random(N - 1)
-    k = process.integers(low=1, high=N, size=N-1)
-    U = np.zeros(N * 2, dtype=np.complex128)
+    # N is even
+    # results in N2 number of "distinct" spectral lines, but we later set dc component to 0
+    N2 = N // 2
+    # sample positive frequencies up to fs, skipping dc
+    k = process.integers(low=1, high=N, size=N2-1)
+    print(len(k))
 
-    # signal is real, so its spectrum is hermitian (negative frequencies are conjugate symmetric)
-    samples = gain * np.exp(1j * 2 * np.pi * k / N)
+    # signal is real, so its spectrum is hermitian
+    # negative frequencies are conjugate symmetric
+    # magnitude is even while the phase is odd
+    positive_spectrum = np.exp(1j * 2 * np.pi * k / N)
+    negative_spectrum = np.flip(positive_spectrum)
     # create oscillator bank with dc value U[0] = 0
-    U[1:N] = samples
+    print(len(positive_spectrum))
+    U = np.array([0] + list(positive_spectrum) + [0] + list(np.conj(negative_spectrum)), dtype=np.complex128)
+    print(len(U))
 
-    # create time domain signal
-    u = 2 * np.sqrt(UNITY_AMPLITUDE) * np.real(np.fft.irfft(U))
-    return u, U[:N]
+    # extract the continuous time domain signal corresponding to the constructed fourier series (hermitian spectrum)
+    # norm of "ortho" applies a 1/sqrt(N) scaling, as desired
+    u = np.fft.ifft(U, norm="ortho")
+    return u, U
 
 def normalized_periodic_noise(N, normalized=True, fs=1, process=None):
     '''
@@ -59,46 +71,99 @@ def normalized_periodic_noise(N, normalized=True, fs=1, process=None):
     '''
     pass
 
-def write_to_c_array(data):
-    tablefile = open("table.c", "w")
-    tablefile.write("#include <stdint.h>\n\n")
-    tablefile.write("uint16_t drive_lut[] = { \\")
-    for index, val in enumerate(data):
-        if index % 32:
-            tablefile.write(f'{int(val)},')
-        else:
-            tablefile.write(f'\n{int(val)},')
-    tablefile.close()
 
-if __name__ == '__main__':
+def zippered_multisine():
+    ''' Input signals are chosen such that each input contains F excited frequencies
+        at an interleaved frequency grid'''
+    pass
+
+
+def orthogonal_multisine():
+    '''Does not require the number of inputs to be a power of two'''
+    pass
+
+
+def hadamard_multisine():
+    '''Requires number of inputs to be a power of two'''
+    pass
+
+
+def hadamard_matrix():
+    ''' Square orthogonal matrix '''
+    pass
+
+
+def frf_uncertainty(G0, varY, varU, sY0Y0, SU0U0, SY0U0, varYU):
+    ''' The uncertainty is inverrsely proportional to the total power of the excitation signal and also to the shape of its power spectrum '''
+    pass
+
+def crest_factor(sig: list[float]) -> float:
+    crest = len(sig)
+    return crest
+
+
+def oscillator_bank(N, freqs, amps, process=None)->list[float]:
+    k = np.arange(N)
+    harmonics = len(freqs)
+    oscillators = [amp * np.sin(np.pi * freq * k) for freq, amp in zip(freqs, amps)]
+    return np.sum(np.array(oscillators), axis=0)
+
+
+def swept_sine(f1: float, f2: float, Ts: float=1) -> None:
+    ''' f1, f2, in Hertz
+        TS in seconds
+    '''
+
+    # f0 is the minimum resolution
+    f0 = 1 / Ts
+    #assert f1 < fc and f2 < fc
+    k1 = int(np.round(f1 / f0))
+    k2 = int(np.round(f2 / f0))
+
+    # k1 and k2 must be positive ints and > 1, otherwise the frequency resolution is not enough within the given time window
+    # k2 > k1
+    assert k1 > 1 and k2 > 1
+    assert k2 > k1
+
+    a = np.pi * (k2 - k1) * f0**2
+    b = 2 * np.pi * k1 * f0
+
+    # TODO: how many points are required to avoid freq domain aliasing?
+    print(k2 * f0 / np.pi)
+    # np.pi / N 
+    N = 4096
+    n = np.linspace(0, Ts, N, endpoint=False)
+
+    f1 = k1 * f0
+    f2 = k2 * f0
+    return n, np.sin((a * n + b) * n), (f1, f2)
+
+
+def swept_sine_example():
+    t, sig, freqs = swept_sine(20, 100, Ts=1)
+    sig = sig * np.pi
+    print(freqs)
+
+    smoother = 1
+    ffted = np.fft.rfft(sig, len(sig) * smoother, norm='ortho') / np.sqrt(2)
+    print(np.amax(np.abs(ffted)))
+    print(np.sqrt(np.amax(np.abs(ffted))))
+    plt.plot(t, sig)
+    plt.figure()
+    plt.plot(np.linspace(0, len(ffted) / smoother, len(ffted)), np.abs(ffted))
+    plt.xlim(0, 200)
+
+if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    N = 1024
-    u, U = random_phase_multisine(N=N)
+    t, sig, freqs = swept_sine(20, 100, Ts=1)
+    sig = sig * np.pi
+    print(freqs)
 
+    smoother = 1
+    ffted = np.fft.rfft(sig, len(sig) * smoother, norm='ortho') / np.sqrt(2)
+    print(np.amax(np.abs(ffted)))
+    print(np.sqrt(np.amax(np.abs(ffted))))
+    plt.plot(t, sig)
     plt.figure()
-    plt.title('Amplitude Response')
-    plt.plot(np.abs(U), marker='o')
-
-    plt.figure()
-    plt.title('Test Response')
-    checkfft =np.fft.rfft(u, n=len(u))[:N]
-    plt.plot(np.abs(checkfft), marker='o')
-
-    plt.figure()
-    plt.title('Magnitude Response')
-    mag = 20 * np.log10(np.abs(U[1:]))
-    plt.bar(np.arange(len(mag)), mag)
-
-    # transform to be output ready
-    u_out = u.copy()
-    u_out += BIAS
-
-    print(len(u_out))
-    dac_table = np.round(u_out * 4095 / 3.3)
-    plt.figure()
-    plt.plot(dac_table)
-    write_to_c_array(dac_table)
-    plt.figure()
-    plt.title('Drive signal')
-    plt.plot(u)
-    plt.show()
+    plt.plot(np.linspace(0, len(ffted) / smoother, len(ffted)), np.abs(ffted))
+    plt.xlim(0, 200)
