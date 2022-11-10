@@ -15,8 +15,8 @@ def wola():
         WOLA is good for "instantaneous nonlinear spectral processing"
 
     1. Extract the mth windowed frame of data, using "analysis" window
-    2. Take fft of thee mth frame translated to time zero tto proced the mth speectral frame
-    3. process the mth spectral frame as desired to produce the spectrally modified output frame
+    2. Take fft of the m-th frame translated to time zero to proced the m-th speectral frame
+    3. process the m-th spectral frame as desired to produce the spectrally modified output frame
     4. inverse FFT the spectral frame
     5. apply a synthesis window to yield a weighted output frame
     6. translate the mth output frame to time mR and add to the accumulaated output signal
@@ -51,7 +51,7 @@ def ola_example():
     # impulse train
     sig = np.zeros(Nsig)
     sig[::period] = np.ones(len(range(0, Nsig, period)))
-    plt.plot(sig, 'o')
+    plt.plot(sig)
 
     # low pass filter design via window method
 

@@ -4,7 +4,7 @@ from matplotlib.pyplot import axis
 import numpy as np
 from scipy import linalg, optimize
 
-import util
+from dsp import util
 
 def frequency_sample(M):
     ''' Normalized Frequency sampling resolution: radians per sample '''
@@ -750,16 +750,16 @@ def hamming_overlap_example():
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    hamming_overlap_example()
-    exit
+    #hamming_overlap_example()
+    #exit
     #print(hamming(10))
-    #M = 33
-    #R = (M - 1) // 2
-    #_, window = hamming(M)
-    #window[-1] = 0
-    #print(is_cola(window, R, 3 * M))
-    #plt.show()
-    #exit()
+    M = 33
+    R = (M - 1) // 2
+    _, window = hamming(M)
+    window[-1] = 0
+    print(is_cola(window, R, 3 * M))
+    plt.show()
+    exit()
 
     count = 21
     L = int((count - 1 ) / 2)

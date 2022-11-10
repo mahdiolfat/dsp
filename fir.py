@@ -213,7 +213,7 @@ def example_hilbert_window():
     print(f'bin index at nyquest limit, N even. kn={kn}')
 
     # high-frequency band edge
-    k2 = kn - k1 + 1
+    k2 = int(kn - k1 + 1)
     k2 = int(k2)
 
     print(k1, k2, f1, f2)

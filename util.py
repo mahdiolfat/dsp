@@ -77,7 +77,7 @@ def unwrap_spectral_phase(phase):
     phase0 = 0
     pi2 = np.pi * 2
 
-    threshold = np.pi - np.finfo().eps
+    threshold = np.pi - np.finfo(float).eps
 
     for idx in np.arange(1, N):
         phasenext = phase[idx] + phase0
