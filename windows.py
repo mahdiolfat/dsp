@@ -256,7 +256,7 @@ def bartlett(M, endpoint_zeros=False):
     '''
         - convolution of two length (M - 1) / 2 rectangular windows
         - main lobe twice as wide as that of a rectangular window of length M
-        - first side lobe twice aas faar down as rectangular window
+        - first side lobe twice as faar down as rectangular window
         - often applied implicitly to sample correlations of finite data
         - also called the "tent function"
         - can replace M - 1 by M + 1 to avoid including endpoint zeros

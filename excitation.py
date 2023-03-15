@@ -52,7 +52,8 @@ def random_phase_multisine(N, P=1, gain=1, fs=1, process=None):
     # signal is real, so its spectrum is hermitian
     # negative frequencies are conjugate symmetric
     # magnitude is even while the phase is odd
-    spectral_lines = np.exp(1j * 2 * np.pi * k / N)
+    phase = np.pi * k / N
+    spectral_lines = np.exp(1j * phase)
     positive_spectrum = [0] + list(spectral_lines[:-1])
     negative_spectrum = np.conj(np.flip(spectral_lines))
     # create oscillator bank with dc value U[0] = 0
@@ -63,7 +64,7 @@ def random_phase_multisine(N, P=1, gain=1, fs=1, process=None):
 
     U = np.fft.fftshift(U)
     u = np.fft.ifft(U, norm="ortho")
-    return u, U
+    return u, phase
 
 
 def periodic_noise(N, P=1, gain=1, fs=1, process=None):
