@@ -1,6 +1,6 @@
 import windows
 import noise
-from dsp import util
+import util
 
 import numpy as np
 import scipy.signal

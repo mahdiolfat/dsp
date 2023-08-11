@@ -189,40 +189,50 @@ def example_hilbert_direct_remez():
     plt.show()
 
 def example_hilbert_window():
-    count = 257
-    N = util.nextpow2(count * 8)
-
-    print(f'fft count={N}')
-    fs = 22050
-    f1 = 530  # transition bandwidth
+    fig, axs = plt.subplots(4, 2, sharex=True)
+    fig.set_tight_layout(True)
+    #fs = 22050
+    #f1 = 530  # transition bandwidth
+    fs = 1024
+    f1 = 30 # transition bandwidth
     beta = 8
+
+    count = 257
+    N = util.nextpow2((count - 1) * (fs // (count - 1)))
+    print(f'fft count={N}')
 
     fn = fs / 2 # nyquest
     f2 = fn - f1  # upper transition bandwidth
 
     # lower-band edge in bins
-    k1 = round(N * f1 / fs)
+    k1 = int(round(N * f1 / fs))
     if k1 < 2:
         # cannot have dc or fn response
         k1 = 2
 
-    k1 = int(k1)
-
     # bin index at nyquest limit, N even
     kn = N // 2 + 1
+    print("----------------------------")
     print(f'bin index at nyquest limit, N even. kn={kn}')
 
     # high-frequency band edge
     k2 = int(kn - k1 + 1)
     k2 = int(k2)
 
-    print(k1, k2, f1, f2)
+    print("----------------------------")
+    print("high-frequency band edge")
+    print(k1, k2)
+    print(f1, f2)
 
     # quantized band-edge frequencies
     f1 = k1 * fs / N
     f2 = k2 * fs / N
 
-    print(k1, k2, f1, f2)
+    print("----------------------------")
+    print("quantized band edges")
+    print(k1, k2)
+    print(f1, f2)
+    print("----------------------------")
 
     # ideal frequency response
     a = np.concatenate(((np.arange(k1-1) / (k1 - 1))**8, np.ones((k2-k1+1))))
@@ -230,8 +240,8 @@ def example_hilbert_window():
     b = np.concatenate(((np.arange(k1-2, -1, -1) / (k1 - 1))**8, np.zeros((N//2-1))))
     c = np.concatenate((a, b))
 
-    plt.figure("Ideal freq response")
-    plt.plot(c)
+    axs[0, 0].set_title("Ideal freq response")
+    axs[0, 0].plot(c, marker='o')
 
     impulse_response = np.fft.ifft(c)
 
@@ -242,15 +252,11 @@ def example_hilbert_window():
     aerr = np.linalg.norm(impulse_response[N//2-N//32:N//2+N//32])/np.linalg.norm(impulse_response)
     print(f'Time aliasing = {aerr}')
 
-    plt.figure("Impulse Response - Real")
-    plt.plot(np.fft.ifftshift(np.real(impulse_response)))
-
-    plt.figure("Impulse Response - Imaginary")
-    plt.plot(np.fft.ifftshift(np.imag(impulse_response)))
+    axs[0, 1].set_title("Impulse Response")
+    axs[0, 1].plot(np.real(np.fft.fftshift(impulse_response)))
+    #axs[0, 1].plot(np.imag(np.fft.fftshift(impulse_response)))
 
     wrange, winimpulse = win.kaiser(count, beta=beta)
-    #plt.figure()
-    #plt.plot(wrange, winimpulse)
 
     # put the kaiser window in zero-phase form:
     wzp1 = winimpulse[count // 2:]
@@ -258,31 +264,30 @@ def example_hilbert_window():
     wzp3 = winimpulse[:count // 2]
     wzp = np.concatenate((wzp1, wzp2, wzp3))
 
-    plt.figure("Kaiser Window")
-    plt.plot(np.fft.fftshift(wzp))
+    axs[1, 1].set_title("Kaiser Window")
+    axs[1, 1].plot(winimpulse)
 
     hw = wzp * impulse_response
-    plt.figure("Filtered - Time Domain")
-    plt.plot(np.real(np.fft.fftshift(hw)))
+    axs[2, 1].set_title("Filtered - Time Domain")
+    axs[2, 1].plot(np.real(np.fft.fftshift(hw)))
 
     # final causal version 
     hh = np.concatenate((hw[N - (count - 1) // 2: N - 1], hw[:count // 2]))
-
-    plt.figure("Filtered - Time Domain - hh")
-    plt.plot(np.real(hh))
-
-    plt.figure("Filtered - Time Domain")
-    plt.plot(np.real(np.fft.fftshift(hw)))
+    axs[3, 1].set_title("Filtered - Time Domain - Causal")
+    axs[3, 1].plot(np.real(hh))
 
     response = np.fft.fft(hw)
     gain = np.abs(response)
     phase = np.angle(response)
     gain_db = 20*np.log10(gain)
     gain_db = gain_db - np.nanmax(gain_db)
-    plt.figure("Filtered - Spectrum - Gain (db)")
-    plt.plot(np.fft.fftshift(gain_db))
-    plt.figure("Filtered - Spectrum - Phase (rad)")
-    plt.plot(np.fft.fftshift(phase))
+    axs[2, 0].set_title("Filtered - Spectrum - Gain (db)")
+    axs[2, 0].plot(gain_db)
+
+
+    axs[3, 0].plot(phase)
+    axs[3, 0].set_title("Filtered - Time Domain - hh Causal")
+
     plt.show()
 
 def example_lp_fft():

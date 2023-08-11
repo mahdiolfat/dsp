@@ -2,6 +2,7 @@
 
 import numpy as np
 import scipy.signal as signal
+import scipy.linalg as linalg
 
 import windows
 import util
@@ -16,43 +17,46 @@ def spectral_envelope_cepstrum(sig, f0, fs=1):
     # 40ms analysis window
     Nframe = util.nextpow2(fs / 25)
     _, w = windows.hamming(Nframe)
-    winspeech = w * sig[:Nframe]
+    winspeech = sig[:Nframe] * w
     Nfft = 4 * Nframe
-    sspec = np.fft.fft(winspeech, Nfft)
-    dbsspecfull = 20 * np.log10(np.abs(sspec))
+    nspec = Nfft // 2 + 1
+    sspec = 2*np.pi*np.fft.fft(winspeech, Nfft, norm='ortho')
+    dbsspec = 20 * np.log(np.abs(sspec))
 
     # real cepstrum
-    rcep = np.fft.ifft(dbsspecfull)
+    rcep = np.fft.ifft(dbsspec, norm='ortho')
     # eliminate round-off noise in imag part
     rcep = np.real(rcep)
 
-    period = round(fs / f0)
-
-    nspec = Nfft // 2 + 1
+    period = int(round(fs / f0))
 
     # real cepstrum
     aliasing = np.linalg.norm(rcep[nspec-10:nspec+10]) / np.linalg.norm(rcep)
     print(f'aliasing = {aliasing}')
 
     # almost 1 period left and right
-    nw = 2 * period - 4
+    nw = 2 * period - 5
 
     # make window count odd
     if np.floor(nw/2) == nw/2:
         nw -= 1
 
-    _, w = windows.rectangle(nw)
-
+    w = np.ones(nw)
     # make it zero phase
     wzp = np.concatenate((w[(nw - 1) // 2:nw], np.zeros(Nfft-nw), w[:(nw-1) // 2]))
 
     # lowpass filter (lifter) the cepstrum
     wrcep = wzp * rcep
-    rcepenv = np.fft.fft(wrcep)
+    rcepenv = np.fft.fft(wrcep, norm='ortho')
     # should be real
     rcepenvp = np.real(rcepenv[:nspec])
     rcepenvp = rcepenvp - np.mean(rcepenvp)
 
+    #diff = np.max(dbenvlp) - np.max(dbsspecfull)
+    #dbsspecn = dbsspec + diff
+    plt.figure()
+    plt.plot(rcepenvp)
+    plt.plot(dbsspec[:dbsspec.size//2])
     return rcep, rcepenv
 
 def spectral_envelope_example():
@@ -87,31 +91,23 @@ def spectral_envelope_example():
 
     # normalize
     sig /= np.max(sig)
-    _, w = windows.hamming(512)
-    # compute the speech vowel
-    sigbl = sig[:len(w)] * w
-
-    #plt.plot(10*np.log10(np.abs(np.fft.rfft(sig, fs))**2))
-    #plt.xlim(0, 4500)
 
     speech = signal.lfilter([1], a, sig)
-    # hamming windowed
-    speechbl = speech[:len(w)] * w
 
-    #plt.plot(speech)
-    #plt.xlim(0, 600)
-    #plt.plot(10*np.log10(np.abs(np.fft.rfft(speech, fs))**2))
-    #plt.xlim(0, 4500)
+    Nframe = util.nextpow2(fs / 25)
+    _, w = windows.hamming(Nframe)
 
-    #plt.show()
+    # hamming windowed speech vowel
+    winspeech = speech[:len(w)] * w
 
-    rcep, rcepenv = spectral_envelope_cepstrum(speech, f0, fs)
-    #plt.plot(rcep)
-    #plt.xlim(0, 140)
-    #plt.show()
+    Nfft = 4 * Nframe
+    nspec = Nfft // 2 + 1
+
+    sspec = 2*np.pi*np.fft.fft(winspeech, Nfft, norm='ortho')
+    dbsspecfull = 20 * np.log10(np.abs(sspec))
+
 
     # spectral envelope by linear prediction
-
     # assume three formants and no noise
     M = 6
 
@@ -122,12 +118,12 @@ def spectral_envelope_example():
         rx[i] = rx[i] + speech[:nsamps-i] @ speech[i:nsamps]
 
     # prep the M by M Toeplitz covariance matrix
-    covmatrix = np.zeros((M, M))
-    for i in range(M):
-        covmatrix[i, i:] = rx[:M-i]
-        covmatrix[i:, i] = rx[:M-i]
+    #covmatrix = np.zeros((M, M))
+    #for i in range(M):
+        #covmatrix[i, i:] = rx[:M-i]
+        #covmatrix[i:, i] = rx[:M-i]
 
-    print(covmatrix)
+    covmatrix = linalg.toeplitz(rx[:-1])
 
     # solve normal equations for prediction coefficients
     Acoeffs = np.linalg.solve(-covmatrix, rx[1:])
@@ -135,24 +131,20 @@ def spectral_envelope_example():
     # linear prediction polynomial
     Alp = np.concatenate(([1], Acoeffs))
 
-    Nframe = util.nextpow2(fs / 25)
-    Nfft = 4 * Nframe
-    nspec = Nfft // 2 + 1
-    _, w = windows.hamming(Nframe)
-    winspeech = w * sig[:Nframe]
-    Nfft = 4 * Nframe
-    sspec = np.fft.fft(winspeech, Nfft)
-    dbsspecfull = 20 * np.log10(np.abs(sspec))
-
     w, h = signal.freqz(1, Alp, nspec, fs=fs)
     dbenvlp = 20 * np.log10(np.abs(h))
     diff = np.max(dbenvlp) - np.max(dbsspecfull)
-    dbsspecn = dbsspecfull + np.sum(diff)
+    dbsspecn = dbsspecfull + diff
 
     plt.plot(w, dbenvlp)
     plt.plot(w, dbsspecn[:1022:-1])
-    plt.show()
+    return speech
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    spectral_envelope_cepstrum()
+
+    fs = 8192
+    f0 = 200
+    sig = spectral_envelope_example()
+    spectral_envelope_cepstrum(sig, f0, fs)
+    plt.show()

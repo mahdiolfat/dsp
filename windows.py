@@ -1,122 +1,13 @@
 '''A module containing a set of window filters'''
 
-from matplotlib.pyplot import axis
+
 import numpy as np
 from scipy import linalg, optimize
 
 from dsp import util
 
-def frequency_sample(M):
-    ''' Normalized Frequency sampling resolution: radians per sample '''
-    return 2 * np.pi / M
 
-def mainlobe_width_rectangle(M, fs=1):
-    # rectangle window has the tightest main-lobe width
-    return 2 * fs / M
-
-def mainlobe_width_kaiser(M, beta, fs=1):
-    alpha = beta / np.pi
-    return alpha * 2 * fs / M
-
-def mainlobe_width_poisson(M, alpha, fs=1):
-    return alpha * 2 * fs / M
-
-def mainlobe_width_poisson(M, alpha, fs=1):
-    return alpha * 2 * fs / M
-
-def mainlobe_width_hamming(M, fs=1):
-    return 4 * fs / M
-
-def mainlobe_width_hann(M, fs=1):
-    return 4 * fs / M
-
-def mainlobe_width_generalized_hamming(M, fs=1):
-    return 4 * fs / M
-
-def mainlobe_width_blackman(M, fs=1):
-    return 6 * fs / M
-
-def mainlobe_width_l_term_blackman(M, L, fs=1):
-    return 2 * L * fs / M
-
-def overlap_rectangular(frame_size):
-    ''' for rectangular window, hop-size can equal frame length with no overlap'''
-    return frame_size
-
-def overlap_blackman(frame_size):
-    '''for non-rectangular windows, hope-size cannot exceed half the frame length'''
-    if frame_size % 2 == 0:
-        # even
-        return frame_size / 2 - 1
-    else:
-        return (frame_size - 1) / 2
-
-def overlap_hamming(frame_size):
-    '''for non-rectangular windows, hope-size caannot exceed half the frame length
-    typical hop-size'''
-    return frame_size / 3
-
-def spectrum_hamming(M, alpha=0.54, beta=0.46):
-    omega = 2 * np.pi / M
-    samplepoints = 1000
-    domain_1 = np.linspace(-np.pi, np.pi, num=samplepoints, endpoint=False)
-    domain_2 = np.linspace(-np.pi - omega, np.pi - omega, num=samplepoints, endpoint=False)
-    domain_3 = np.linspace(-np.pi + omega, np.pi + omega, num=samplepoints, endpoint=False)
-    transform = alpha * util.asinc(count, domain_1) + beta * util.asinc(count, domain_2) + beta * util.asinc(count, domain_3)
-
-    spectrum = M * transform
-    return spectrum
-
-class Window():
-    '''Spectrum analysis window'''
-
-    def __init__(self, count, phase, fs = None, **kwargs) -> None:
-        self._count = None
-        self._phase = None
-        self._spectrum = None
-        self._magnitude = None
-        self._amplitude = None
-        self._mainlobe = None
-        self._side_lob = None
-        self._roll_off = None
-        self._periodic = None # for overlap+add
-        self._endpoint = False #  if count 
-        self._alternative_names = None
-        self._timeconstant = None # time domain rate of decay
-        self._slope = None
-        self._curvature = None
-        self._normalized_amplitude = True
-        self._normalized_frequency = True
-        self._side_lob_width = None
-        self._main_lob_width = None
-
-    @property
-    def phase(self):
-        return self._phase
-
-    @property
-    def spectrum(self):
-        return self._spectrum
-
-    @property
-    def amplitude(self):
-        return self._spectrum
-
-    @property
-    def magnitude(self):
-        return self._magnitude
-
-    def is_causal(self):
-        return False
-
-    def is_symmetric(self):
-        return False
-
-    def is_zerophase(self):
-        return not self.is_causal()
-
-
-def rectangle(M):
+def rectangle(M) -> np.ndarray:
     '''
     The rectangle window.
     Zero-phase: symmetric about 0
@@ -128,20 +19,24 @@ def rectangle(M):
         - As M increases, main lobe narrows (better frequency resolution)
         - M has no effect on the height of the sidee lobes
         - First side lobe is only 13dB down from the main-lobe peak
-        - Side lobes roll off at approximately 6dB per octave
+        - Side lobes roll off at approximately -6dB per octave
         - A linear phase term arises when we shift the window to make it causal (shift of M-1/2 rad)
     '''
+    window = np.ones(M)
+    return window
 
-    # calculate positive half only, flip and use for negative half
-    wrange = np.arange(-M + 1, M)
-    window = (np.abs(wrange) <= (M - 1) / 2.).astype(float)
-    #_spectrum = M * util.asinc(count, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
-    return wrange, window
 
-def hamming_generalize(M, alpha, beta):
-    pass
+def hamming_generalize(M: int, /,
+                       alpha: float = 0.54, beta: float = 0.46) -> np.ndarray:
+    """The generalized 'raised cosine' filters.
+    Implementation is direct and performance is not optimized.
+    """
 
-def hann(M, include_zeros=True, periodic=False, causal=True):
+    return np.ones(np.rint(M * alpha / beta))
+
+
+def hann(M: int, /,
+         include_zeros=True, periodic=False, causal=True) -> np.ndarray:
     ''' Also known as Hanning or raised-cosine window
         - Main lobe is 4*Omega wide, Omega = 2*pi / M
         - First side lobe is at -31dB
@@ -169,9 +64,9 @@ def hann(M, include_zeros=True, periodic=False, causal=True):
     wrange = np.arange(start, end)
 
     window = 0.5 * (1 + sign * np.cos(2 * np.pi * wrange / count))
-    spectrum = M * util.asinc(M, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
 
-    return wrange, window
+    return window
+
 
 def hamming(M, periodic=False):
     '''
@@ -180,16 +75,19 @@ def hamming(M, periodic=False):
         - Roll off asymptotically -6 dB per octave
         - Side lobes are closer to equal ripple
     '''
-    wrange = np.arange(M)
-    count = M if periodic else M - 1
+
+    count = M - 1 if periodic else M
+    wrange = np.arange(count)
 
     #alpha = 25 / 46
     #beta = 1 - alpha
     alpha = 0.54
     beta = 0.46
 
-    window = alpha - beta * np.cos(2 * np.pi * wrange / count)
-    return wrange, window
+    window = alpha - beta * np.cos(2 * np.pi * wrange / (count - 1))
+    window = window / np.max(window)
+    return window
+
 
 def modulated_lapped_transform(M):
     '''
@@ -202,6 +100,7 @@ def modulated_lapped_transform(M):
     window = np.sin((np.pi / 2 / M) * (wrange + 0.5))
     return wrange, window
 
+
 def blackman_generalized(M, coefficients):
     orders = len(coefficients)
     wrange = np.arange(-(M - 1) / 2, M / 2)
@@ -209,7 +108,7 @@ def blackman_generalized(M, coefficients):
     wterms = np.zeros((orders, 3 * M))
 
     for order in range(orders):
-        wterms[order,:] = np.concatenate((nrange, np.cos(order * 2 * np.pi * wrange / M), nrange), axis=None)
+        wterms[order, :] = np.concatenate((nrange, np.cos(order * 2 * np.pi * wrange / M), nrange), axis=None)
     window = np.matmul(coefficients, wterms)
 
     return wrange, window.T
@@ -225,6 +124,7 @@ def blackman_classic(M):
     '''
     return blackman_generalized(M, coefficients=[0.42, 0.5, 0.08])
 
+
 def blackman_harris(M):
     '''
         - side-love level 71.48 dB
@@ -234,8 +134,6 @@ def blackman_harris(M):
     '''
     return blackman_generalized(M, coefficients=[0.4243801, 0.4973406, 0.00782793])
 
-def spectrum_bartlett(M):
-    return ((M - 1) / 2)**2 * util.asinc((M - 1) / 2, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
 
 def power_of_cosine(M, order):
     '''
@@ -256,63 +154,56 @@ def bartlett(M, endpoint_zeros=False):
     '''
         - convolution of two length (M - 1) / 2 rectangular windows
         - main lobe twice as wide as that of a rectangular window of length M
-        - first side lobe twice as faar down as rectangular window
+        - first side lobe twice aas faar down as rectangular window
         - often applied implicitly to sample correlations of finite data
         - also called the "tent function"
         - can replace M - 1 by M + 1 to avoid including endpoint zeros
-
-
         - TODO: handle even M
     '''
-    #wrange, recwindow = rectangle(M)
-    #window = recwindow * ( 1 - 2 * np.abs(wrange) / (M - 1))
 
-    num = M - 1 if endpoint_zeros else M
+    M2 = (M - 1) // 2
     # for M odd
-    halfrange = np.linspace(0, (M - 1) / 2, num=num)
-    if not endpoint_zeros:
-        halfrange = halfrange[1:]
+    halfwin = np.linspace(1, M2 - 1, M2) / M2
 
-    wrange = np.linspace(-(M - 1) / 2, (M - 1) / 2, num=M)
+    window = np.concatenate((halfwin, np.ones(1), np.flip(halfwin)))
+    return window
 
-    window = 2 * halfrange / (M - 1)
-    window = np.concatenate((window, window[-2::-1]), axis=None)
-    return wrange, window
 
 def poisson(M, alpha):
     M2 = (M - 1) / 2
     wrange = np.linspace(-M2, M2, num=M)
     rate = -alpha / M2
     window = np.exp(rate * np.abs(wrange))
-    #wrange, recwindow = rectangle(M)
-    #window = recwindow * np.exp(2 * -alpha * np.abs(wrange) / (M - 1))
+
     return wrange, window
+
 
 def hann_poisson(M, alpha=10):
     ''' hann poisson as the product of the associated hann and poisson windows
         - No side-lobes for alpha >= 2
         - Transform magnitude has negative slope for all positive frequencies
         - Has a convex transform magnitude to the left or to the right of the peak
-        - valuable for any convext optimization method such as "hill climbing"
+        - valuable for any convex optimization method such as "hill climbing"
     '''
 
-    wrange, whann = hann(count, include_zeros=True, causal=False)
-    _, wpoisson = poisson(count, alpha=alpha)
+    whann = hann(M, include_zeros=True, causal=False)
+    _, wpoisson = poisson(M, alpha=alpha)
     window = whann * wpoisson
-    return wrange, window
+    return window
 
 def hann_poisson2(M, alpha=10):
     ''' hann poisson direct implementation'''
-    M2 = (M - 1) / 2
+    Modd = M % 2
+    M2 = (M - Modd) / 2
     wrange = np.linspace(-M2, M2, num=M)
     poissonrate = -alpha / M2
     poisson = np.exp(poissonrate * np.abs(wrange))
 
     hannrate = np.pi / M2
-    hann = 0.5 * (1 + np.cos(hannrate*wrange))
+    hann = 0.5 * (1 + np.cos(hannrate * wrange))
 
     window = poisson * hann
-    return wrange, window
+    return window
 
 def slepian(M, Wc):
     '''
@@ -327,10 +218,11 @@ def slepian(M, Wc):
     evals, evects = linalg.eigh(A)
     # only need the principal eigenvector
     imax = np.argmax(np.abs(evals))
-    pvect = evects[:,imax]
+    pvect = evects[:, imax]
     window = pvect / np.amax(pvect)
 
     return wrange, window
+
 
 def kaiser(M, beta=10):
     '''
@@ -348,15 +240,8 @@ def kaiser(M, beta=10):
     M2 = (M - 1) / 2
     wrange = np.linspace(-M2, M2, num=M)
     window = util.bessel_first(beta * np.sqrt(1 - (2 * wrange / M)**2)) / util.bessel_first(beta)
-    return wrange, window
+    return window
 
-def spectrum_kaiser(M, beta):
-    wrange = np.linspace(-M, M, num=2 * M + 1)
-    term1 = M / util.bessel_first(beta)
-    arg = np.sqrt((M * wrange / 2)**2 - beta**2)
-    term2 = np.sin(arg) / arg
-    spectrum = term1 * term2
-    return wrange, spectrum
 
 def chebyshev(M, ripple):
     '''
@@ -381,10 +266,6 @@ def chebyshev(M, ripple):
     spectrum = num / denom
     return np.nan_to_num(spectrum)
 
-def spectrum_chebyshev(M, Wc):
-    '''
-        -
-    '''
 
 def gaussian_norm(M, alpha):
     '''
@@ -399,8 +280,8 @@ def gaussian_norm(M, alpha):
 
     M2 = (M - 1) / 2
     wrange = np.linspace(-M2, M2, num=M)
-    window = np.exp( - 1 / 2 * np.pow(alpha * wrange / (M - 1 / 2), 2))
-    return wrange, window
+    window = np.exp(- 1 / 2 * np.power(alpha * wrange / (M - 1 / 2), 2))
+    return window
 
 def gaussian(M, sigma):
     '''
@@ -408,427 +289,156 @@ def gaussian(M, sigma):
     '''
     M2 = (M - 1) / 2
     wrange = np.linspace(-M2, M2, num=M)
-    window = np.exp(-wrange * wrange / (2 * sigma**2))
-    return wrange, window
+    window = 1 / 4 / np.pi**2 / sigma * np.exp(-wrange * wrange / (2 * sigma))
+    return  window
 
-def spectrum_blackman_harris(M, order=None, coefficients=None):
-    '''
-        Frequency domain implementation can be performed as a (2 * order -1)-point convolution with the spectrum of the unwindowed data
-        Generally, any L-term Blackman-Harris window requires convolution of the critically saampled spectrum with a smoother of length 2L-1
-    '''
 
-    # M point rectangular data
-    wrange, wr = rectangle(M)
-    # M point dft
-    dft = np.fft.fftshift(np.fft.fft(wr, 1024))
-
-    smoother = [1/4, 1/2, 1/4]
-
-    # convolve DFT data with the smoother
-    window = np.convolve(dft, smoother)
-
-    return window
-
-def spectrum_symmetric(L, w):
-    '''for zero-phase symmetric windows'''
-    lrange = np.arange(1, L + 1)
-    upper = np.array(2 * np.cos(lrange * w)).reshape((1, L))
-    lower = np.ones((1, 1))
-    return np.concatenate((lower, upper), axis=1)
-
-def optimal_lp(M, Wsb):
-    '''
-        objectives:
-        - symmetric zero-phase
-        - positive window samples
-        - Transform amplitude to be 1 at DC
-        - Transform to be within [-delta, delta] in the stop-band
-            - for w_sb <= w <= pi
-        - delta be small (minimize)
-    '''
-
-    # due to symmetry, impulse response h(n) is equal to window w(n) for n >= 0 
-    L = int((M - 1) / 2)
-    print(f'L = {L}')
-
-    # positive h(n) includes h(0), so the minimized h(n) has L+1 terms
-    # size of objective column vector is (L + 2, 1)
-
-    wcount = 300
-    wrange = np.linspace(Wsb, np.pi, num=wcount)
-
-    # minimize
-    minimizer = np.concatenate((np.zeros((L + 1)), np.ones((1))), axis=None)
-    print(f'minimizer = {minimizer.shape}')
-
-    # subject to
-    b_eq = [1]
-    Aeq = np.concatenate((spectrum_symmetric(L, 0), np.zeros((1, 1))), axis=1)
-    print(f'Aeq = {Aeq.shape}')
-
-    Asb = np.empty((wcount, L + 1))
-    for k, w in enumerate(wrange):
-        Asb[k,:] = spectrum_symmetric(L, w)
-    print(f'Asb = {Asb.shape}')
-
-    Asb = np.concatenate((-Asb, Asb))
-    print(f'Asb = {Asb.shape}')
-    Asb = np.concatenate((Asb, -np.ones((2 * wcount, 1))), axis=1)
-    print(f'Asb = {Asb.shape}')
-
-    b_lt = np.zeros((Asb.shape[0], 1))
-    print(f'b_lt = {b_lt.shape}')
-
-    # create [min, max] bound tuples for all decision variables
-    # all window values are >= 0, no bounds on the stop-band amplitude, delta
-    bounds = [(0, None)] * (L + 1)  # impulse responses
-    bounds.append((None, None))  # amplitude in stop band
-
-    # solve LP problem
-    result = optimize.linprog(minimizer, A_ub=Asb, b_ub=b_lt, A_eq=Aeq, b_eq=b_eq, bounds=bounds)
-    print(result)
-
-    if not result["success"]:
-        return False, None, None
-
-    # construct the negative negative values of the 0-phase window
-    optimized = result["x"]
-    delta = optimized[-1]
-    window = optimized[:-1]
-    window = np.concatenate((window[:0:-1], window), axis=None)
-    return True, delta, window
-
-def optimal_monotonicity(M, Wsb):
-    # due to symmetry, impulse response h(n) is equal to window w(n) for n >= 0 
-    L = int((M - 1) / 2)
-    print(f'L = {L}')
-
-    minimizer = np.concatenate((np.zeros((L + 1)), np.ones((1))), axis=None)
-
-    b_eq = [1]
-    Aeq = np.concatenate((spectrum_symmetric(L, 0), np.zeros((1, 1))), axis=1)
-    print(f'Aeq = {Aeq.shape}')
-
-    wcount = 300
-    wrange = np.linspace(Wsb, np.pi, num=wcount)
-    Asb = np.empty((wcount, L + 1))
-    for k, w in enumerate(wrange):
-        Asb[k,:] = spectrum_symmetric(L, w)
-    print(f'Asb = {Asb.shape}')
-
-    Asb = np.concatenate((-Asb, Asb))
-    print(f'Asb = {Asb.shape}')
-    Asb = np.concatenate((Asb, -np.ones((2 * wcount, 1))), axis=1)
-    print(f'Asb = {Asb.shape}')
-
-    # monotonicity constraint:
-    mono = np.delete(np.diagflat([1] * L, k=1) - np.identity(L + 1), -1, 0)
-    Asb_upper = np.concatenate((mono, np.zeros((mono.shape[0], 1))), axis=1)
-
-    Asb = np.concatenate((Asb_upper, Asb))
-    b_lt = np.zeros((Asb.shape[0], 1))
-    print(f'b_lt = {b_lt.shape}')
-
-    # create [min, max] bound tuples for all decision variables
-    # all window values are >= 0, no bounds on the stop-band amplitude, delta
-    bounds = [(0, None)] * (L + 1)  # impulse responses
-    bounds.append((None, None))  # amplitude in stop band
-
-    # solve LP problem
-    result = optimize.linprog(minimizer, A_ub=Asb, b_ub=b_lt, A_eq=Aeq, b_eq=b_eq, bounds=bounds)
-    print(result)
-
-    if not result["success"]:
-        return False, None, None
-
-    # construct the negative negative values of the 0-phase window
-    optimized = result["x"]
-    delta = optimized[-1]
-    window = optimized[:-1]
-    window = np.concatenate((window[:0:-1], window), axis=None)
-    return True, delta, window
-
-def optimal_lone(M, Wsb, weight=1):
-    ''' L ones is sensitive to all derivatives, not just the largest'''
-    # due to symmetry, impulse response h(n) is equal to window w(n) for n >= 0 
-    L = int((M - 1) / 2)
-    print(f'L = {L}')
-
-    minimizer = np.concatenate((np.zeros((L + 1)), [1]), axis=None)
-    minimizer = np.concatenate((minimizer, [weight] * L), axis=None)
-    print(f'minimizer = {minimizer.shape}')
-
-    b_eq = [1]
-    Aeq = np.concatenate((spectrum_symmetric(L, 0), np.zeros((1, L + 1))), axis=1)
-    print(f'Aeq = {Aeq.shape}')
-
-    wcount = 300
-    wrange = np.linspace(Wsb, np.pi, num=wcount)
-    Asb = np.empty((wcount, L + 1))
-    for k, w in enumerate(wrange):
-        Asb[k,:] = spectrum_symmetric(L, w)
-    print(f'Asb = {Asb.shape}')
-
-    Asb = np.concatenate((-Asb, Asb))
-    print(f'Asb = {Asb.shape}')
-    Asb = np.concatenate((Asb, -np.ones((2 * wcount, 1))), axis=1)
-    Asb = np.concatenate((Asb, np.zeros((Asb.shape[0], L))), axis=1)
-    print(f'Asb = {Asb.shape}')
-
-    # monotonicity constraint:
-    lone = np.delete(np.diagflat([1] * L, k=1) - np.identity(L + 1), -1, 0)
-    lone = np.concatenate((-lone, lone))
-
-    Asb_upper = np.concatenate((lone, np.zeros((lone.shape[0], 1))), axis=1)
-    Asb_upper = np.concatenate((Asb_upper, -np.ones((Asb_upper.shape[0], L))), axis=1)
-
-    Asb = np.concatenate((Asb_upper, Asb))
-    b_lt = np.zeros((Asb.shape[0], 1))
-    print(f'b_lt = {b_lt.shape}')
-
-    # create [min, max] bound tuples for all decision variables
-    # all window values are >= 0, no bounds on the stop-band amplitude, delta
-    bounds = [(0, None)] * (L + 1)  # impulse responses
-    bounds.append((None, None))  # amplitude in stop band
-    bounds = bounds + [(None, None)] * L  # L one constraint
-
-    # solve LP problem
-    result = optimize.linprog(minimizer, A_ub=Asb, b_ub=b_lt, A_eq=Aeq, b_eq=b_eq, bounds=bounds)
-    print(result)
-
-    if not result["success"]:
-        return False, None, None
-
-    # construct the negative part of the 0-phase window
-    optimized = result["x"]
-    #_sigma = optimized[-1]
-    window = optimized[:L+1]
-    delta = optimized[L+2]
-    window = np.concatenate((window[:0:-1], window), axis=None)
-    return True, delta, window
-
-def optimal_linf(M, Wsb, weight=1):
-    ''' smoothness objective 
-        - l-infinity only cares about maximum derivative 
-        - large weight means there is more weight on smoothness vs. side lobe level
-    '''
-    # due to symmetry, impulse response h(n) is equal to window w(n) for n >= 0 
-    L = int((M - 1) / 2)
-    print(f'L = {L}')
-
-    minimizer = np.concatenate((np.zeros((L + 1)), [1, weight]), axis=None)
-
-    b_eq = [1]
-    Aeq = np.concatenate((spectrum_symmetric(L, 0), np.zeros((1, 2))), axis=1)
-    print(f'Aeq = {Aeq.shape}')
-
-    wcount = 300
-    wrange = np.linspace(Wsb, np.pi, num=wcount)
-    Asb = np.empty((wcount, L + 1))
-    for k, w in enumerate(wrange):
-        Asb[k,:] = spectrum_symmetric(L, w)
-    print(f'Asb = {Asb.shape}')
-
-    Asb = np.concatenate((-Asb, Asb))
-    print(f'Asb = {Asb.shape}')
-    Asb = np.concatenate((Asb, -np.ones((2 * wcount, 1))), axis=1)
-    Asb = np.concatenate((Asb, np.zeros((Asb.shape[0], 1))), axis=1)
-    print(f'Asb = {Asb.shape}')
-
-    # monotonicity constraint:
-    linf = np.delete(np.diagflat([1] * L, k=1) - np.identity(L + 1), -1, 0)
-    print(f'linf = {linf.shape}')
-    linf = np.concatenate((-linf, linf))
-    print(f'linf = {linf.shape}')
-
-    Asb_upper = np.concatenate((linf, np.zeros((linf.shape[0], 1))), axis=1)
-    Asb_upper = np.concatenate((Asb_upper, -np.ones((Asb_upper.shape[0], 1))), axis=1)
-
-    Asb = np.concatenate((Asb_upper, Asb))
-    b_lt = np.zeros((Asb.shape[0], 1))
-    print(f'b_lt = {b_lt.shape}')
-
-    # create [min, max] bound tuples for all decision variables
-    # all window values are >= 0, no bounds on the stop-band amplitude, delta
-    bounds = [(0, None)] * (L + 1)  # impulse responses
-    bounds.append((None, None))  # amplitude in stop band
-    bounds.append((None, None))  # L infinity constraint
-
-    # solve LP problem
-    result = optimize.linprog(minimizer, A_ub=Asb, b_ub=b_lt, A_eq=Aeq, b_eq=b_eq, bounds=bounds)
-    print(result)
-
-    if not result["success"]:
-        return False, None, None
-
-    # construct the negative part of the 0-phase window
-    optimized = result["x"]
-    _sigma = optimized[-1]
-    delta = optimized[-2]
-    window = optimized[:-2]
-    window = np.concatenate((window[:0:-1], window), axis=None)
-    return True, delta, window
-
-def is_spectrum_cola(spectrum, hop):
-    '''
-    Weak COLA: window transform has zeros at frame-rate harmonics
-        - perfect OLA reconstruction
-        - relies on aaliasingg cancellation in frequency domain
-        - aliasing cancellation is disturbed by spectral modifications
-    Strong COLA:
-        - perfect OLAA reconstruction
-        - no aliasing
-        - betterr for spectral modifications
-        - time domain window infinitely long in ideal cases
-    '''
-    pass
-
-def is_cola(window, hop, span):
+def is_cola(window, hop, span=5):
     ''' Test that the overlap-adds to a constant'''
     # TODO: just pick an appropriate span to cover all overlaps
+    # OR use a lut
 
-    # always true for hop = 1
+    # always COLA when sliding (hop = 1)
     if hop == 1:
         return True
 
     M = len(window)
-    s = np.zeros(span)
+    acc = np.zeros(span * M)
+
+    Modd = M % 2
+    overlap = M // hop
 
     olas = []
-    for so in range(0, span - M + 1, hop):
-        ola = s[so:so+M] + window
-        s[so:so+M] = ola
+    for so in range(0, (span - 1) * M, hop):
+        ola = acc[so:so+M] + window
+        acc[so:so+M] = ola
         olas.append(ola)
 
     # remove bias: the hop from the beginning and the end
-    s = s[hop:-hop-3]
+    bias = acc[M:- M].copy()
+    bias = np.around(bias, 2)
 
-    s = np.around(s, 5)
-    plt.plot(s)
-    return np.all(s == s[0])
-
-
-def daniell():
-    pass
+    # COLA if bias is a constant
+    return np.all(bias == bias[0]), bias
 
 
-def parzen():
-    pass
+def cola_rectangle(M: int, overlap=True):
+    Modd = M % 2
+    hop: int = M
+    if overlap:
+        hop = M // 2
+
+    win = rectangle(M)
+    if Modd:
+        win[-1] = 0
+
+    return win, hop
 
 
-def priestley():
-    pass
+def cola_hamming(M: int, zero_method=False):
+    #hop: int = M // 2
+    hop: int = M // 4
+
+    win = hamming(M)
+    if zero_method:
+        win[-1] = 0
+    else:
+        win[-1] /= 2
+        win[0] /= 2
+
+    return win, hop
 
 
-def sasaki():
-    pass
+def cola_hann(M: int):
+    hop: int = M // 2
+    win = hann(M)
+    return win, hop
 
 
-def hamming_overlap_example():
-    fs = 1
+def cola_bartlett(M: int):
+    Modd = M % 2
+    hop: int = int(M + 1) // 2
+    win = bartlett(M)
+    return win, hop
+
+
+def cola_blackman(M: int):
+    Modd = M % 2
+    hop: int = int(M + 1) // 4
+    _, win = blackman_classic(M)
+    return win, hop
+
+
+def cola_blackman_harris(M: int):
+    Modd = M % 2
+    hop: int = int(M + 1) // 3
+    _, win = blackman_harris(M)
+    return win, hop
+
+
+def cola_kaiser(M: int, beta=8):
+    Modd = M % 2
+    hop: int = int(np.floor(1.7 * (M - Modd) / (beta + 1)))
+
+    win = kaiser(M, beta=beta)
+    return win, hop
+
+
+def cola_poisson(M: int):
+    Modd = M % 2
+    hop: int = (M - Modd) // 6
+
+    _, win = poisson(M, alpha=4)
+    return win, hop
+
+
+def cola_hann_poisson(M: int):
+    Modd = M % 2
+    hop: int = (M - Modd) // 2
+
+    win = hann_poisson(M, alpha=8)
+    return win, hop
+
+
+def cola_gaussian(M: int):
+    Modd = M % 2
+    hop: int = (M - Modd) // 8
+
+    win = gaussian(M, 6)
+    return win, hop
+
+
+def cola_gaussian_norm(M: int):
+    Modd = M % 2
+    hop: int = (M - Modd) // 8
+
+    win = gaussian(M, 6)
+    return win, hop
+
+
+def cola_mlt(M: int):
+    Modd = M % 2
+    hop: int = (M - Modd) // 8
+
+    _, win = modulated_lapped_transform(M)
+    return win, hop
+
+
+def is_cola_test():
     M = 33
-    _, w = hamming(M)
-    R = (M - 1) // 2
-    # periodic hamming for COLA
-    w[-1] = 0
+    #win, hop = cola_kaiser(M)
+    #win, hop = cola_gaussian_norm(M)
+    win, hop = cola_rectangle(M)
+    return (is_cola(win, hop), win)
 
-    # frame rate with fs=1
-    N = 6 * M
-
-    # dc (COLA) term
-    sp = np.array(np.ones(N) * np.sum(w) / R, dtype=complex)
-
-    ubound = sp[0]
-    lbound = ubound
-
-    n = np.arange(N)
-    # traverse frame-rate harmonics
-    for k in range(1, R):
-        # the frame-rate harmonic
-        csin = np.exp(1j * 2 * np.pi * fs * k / R * n)
-
-        # exact window transform at this harmonic (fs * k / R)
-        Wf = np.matmul(w, np.conj(csin[:M]))
-        # contribution to OLA hum
-        hum = Wf * csin
-
-        # poisson summation into OLA
-        sp += hum / R
-
-        # update upper/lower bounds
-        Wfb = np.abs(Wf)
-        ubound += Wfb / R
-        lbound -= Wfb / R
-
-    # expect sp to be zero to machine precision
-    plt.plot(sp)
-    plt.show()
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    #hamming_overlap_example()
-    #exit
-    #print(hamming(10))
-    M = 33
-    R = (M - 1) // 2
-    _, window = hamming(M)
-    window[-1] = 0
-    print(is_cola(window, R, 3 * M))
+    res, win = is_cola_test()
+    print(len(win))
+    print(res[0])
+    print(res[1])
+    plt.plot(res[1])
+    plt.plot(win, '-o')
     plt.show()
-    exit()
-
-    count = 21
-    L = int((count - 1 ) / 2)
-    success, delta, window = optimal_lone(count, Wsb = np.pi / 8, weight=6)
-    print(f'window={window}')
-    print(f'delta={delta}')
-    plt.plot(np.linspace(-L, L, num=count), window)
-    #a = spectrum_symmetric(10, 0)
-    #print(a)
-    #print(len(a))
-    #w = gaussian(count, count/8)
-    #spectrum = chebyshev(count, 60)
-    #w = poisson(count, 2)
-    #w2 = hann(count, causal=False)
-    #w3 = hann_poisson(count, 2)
-    #w4 = hann_poisson2(count, 2)
-    #w = rectangle(count)
-    #w = mlt(count)
-    #w = hann_poisson(count)
-    #w = hann(count)
-    #w = blackman_classic(count)
-    #print(w[1])
-    #w = modulated_lapped_transform(count)
-    #print(w[1])
-    #plt.bar(w[0], w[1], width=0.15, color='g')
-    #plt.bar(w2[0], w2[1], width=0.1, color='b')
-    #plt.plot(w[0], w[1], linestyle = "-.", marker= '.', color='g')
-    #plt.plot(w2[0], w2[1], linestyle = "--", marker='o', color='b')
-    #plt.plot(w3[0], w3[1], marker='D', color='r')
-    #plt.plot(w4[0], w4[1], marker='1', color='m')
-    plt.grid()
-    plt.show()
-    exit(0)
-
-    #spectrum = np.fft.fft(w[1])
-    #spectrum = count * util.asinc(count, np.linspace(-np.pi, np.pi, num=1000, endpoint=False))
-
-    #spectrum = spectrum_hamming(count, 1/2, 1/4)
-
-    ## normalized frequency (cycles / sample)
-    #normfreq = np.linspace(-0.5, 0.5, num=1000, endpoint=False)
-
-    #spectrum = np.fft.fftshift(spectrum)
-    #amplitude = np.abs(spectrum)
-    #magnitude = 20 * np.log10(amplitude)
-    #plt.figure()
-    #plt.plot(spectrum)
-    #plt.figure()
-    #plt.plot(magnitude - np.nanmax(magnitude))
-    #plt.figure()
-    #plt.plot(normfreq, magnitude - np.nanmax(magnitude))
-    ##plt.plot(normfreq, magnitude)
-    #plt.ylim((-60, 10))
-
-    #plt.show()

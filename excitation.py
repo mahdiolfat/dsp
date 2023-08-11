@@ -1,6 +1,7 @@
 '''Module for generating excitation signals'''
 
 import numpy as np
+from typing import Any
 
 #For robustness in the presence of spectral modifications, the frame rate should be morre than twice the highest main-lob frequency
 
@@ -48,24 +49,26 @@ def random_phase_multisine(N, P=1, gain=1, fs=1, process=None):
     N2 = (N - odd) // 2
     # sample positive frequencies up to fs, skipping dc
     k = process.integers(low=1, high=N, size=N2)
+    phase = 2 * np.pi * k / N
 
     # signal is real, so its spectrum is hermitian
     # negative frequencies are conjugate symmetric
     # magnitude is even while the phase is odd
-    phase = np.pi * k / N
     spectral_lines = np.exp(1j * phase)
-    positive_spectrum = [0] + list(spectral_lines[:-1])
+    positive_spectrum = np.concatenate(([0], spectral_lines[:-1]))
     negative_spectrum = np.conj(np.flip(spectral_lines))
+    #negative_spectrum = np.concatenate((negative_spectrum))
+
     # create oscillator bank with dc value U[0] = 0
-    U = np.array(list(positive_spectrum) + list(negative_spectrum), dtype=np.complex128)
+    U = np.concatenate((positive_spectrum, negative_spectrum))
 
     # extract the continuous time domain signal corresponding to the constructed fourier series (hermitian spectrum)
     # norm of "ortho" applies a 1/sqrt(N) scaling, as desired
 
-    U = np.fft.fftshift(U)
+    #U = np.fft.fftshift(U)
     u = np.fft.ifft(U, norm="ortho")
+    #print(len(u))
     return u, phase
-
 
 def periodic_noise(N, P=1, gain=1, fs=1, process=None):
     '''
@@ -139,7 +142,7 @@ def crest_factor(sig: list[float]) -> float:
     return crest
 
 
-def oscillator_bank(N, frequencies, amplitudes, fs=1)->list[float]:
+def oscillator_bank(N, frequencies, amplitudes, fs=1) -> np.ndarray:
     freqs = np.array(frequencies, dtype=float)
     amps = np.array(amplitudes, dtype=float)
     if np.any(freqs > fs):
@@ -151,7 +154,7 @@ def oscillator_bank(N, frequencies, amplitudes, fs=1)->list[float]:
                    for freq, amp in zip(freqs, amps)]
     return np.sum(np.array(oscillators), axis=0)
 
-def swept_sine2(f1: float, f2: float, fs: float=73242.1875) -> None:
+def swept_sine2(f1: float, f2: float, fs: float=73242.1875) -> tuple[Any, Any, Any]:
     # f0 is the minimum resolution
 
     N = 504
@@ -195,7 +198,7 @@ def swept_sine(f1: float, f2: float, Ts: float=1) -> None:
     b = 2 * np.pi * k1 * f0
 
     # TODO: how many points are required to avoid freq domain aliasing?
-    print(k2 * f0 / np.pi)
+    #print(k2 * f0 / np.pi)
     # np.pi / N 
     N = 4096
     n = np.linspace(0, Ts, N, endpoint=False)
@@ -211,14 +214,14 @@ def shroeder_multisine(f1, f2, Ts, F) -> None:
     k2 = int(np.floor(f2 / f0))
 
     fs = (k2 - k1) * f0 / F
-    print(fs)
+    #print(fs)
 
     assert fs > 1
 
     k = np.arange(k1, k2, fs)
 
-    print(k1, k2)
-    print(len(k))
+    #print(k1, k2)
+    #print(len(k))
     phases = -k * (k - 1)
     freqs =  k * fs
     Fs = int(round(k2 / fs))
@@ -240,12 +243,12 @@ def shroeder_multisine(f1, f2, Ts, F) -> None:
 def swept_sine_example() -> None:
     t, sig, freqs = swept_sine(20, 100, Ts=1)
     sig = sig * np.pi
-    print(freqs)
+    #print(freqs)
 
     smoother = 1
     ffted = np.fft.rfft(sig, len(sig) * smoother, norm='ortho') / np.sqrt(2)
-    print(np.amax(np.abs(ffted)))
-    print(np.sqrt(np.amax(np.abs(ffted))))
+    #print(np.amax(np.abs(ffted)))
+    #print(np.sqrt(np.amax(np.abs(ffted))))
     plt.plot(t, sig)
     plt.figure()
     plt.plot(np.linspace(0, len(ffted) / smoother, len(ffted)), np.abs(ffted))
@@ -270,7 +273,7 @@ def oscillator_bank_example() -> None:
     k1 = DAC_RATE // freq
     k2 = DAC_RATE // freq / 8
     sig = oscillator_bank(1024, np.array([1/k1, 1/k2]), np.array([1, 0.1]))
-    print(sig[-1])
+    #print(sig[-1])
     plt.figure()
     plt.plot(sig)
 

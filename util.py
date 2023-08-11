@@ -95,27 +95,44 @@ def unwrap_spectral_phase(phase):
 
     return unwrapped
 
-def chirp(t0, f0, t1, f1, analytic=False):
-    beta = (f1 - f0) / t1
+def chirp(t, f0, f1, fs=1, analytic=False):
+    beta = (f1 - f0) / len(t)
     if analytic:
-        return np.exp( 1j * (2 * np.pi * (0.5 * beta * t0**2 + f0 * t0)))
+        return np.exp( 1j * (2 * np.pi * (0.5 * beta * t**2 + f0 * t)))
     else: # real
-        return np.cos(2 * np.pi * (0.5 * beta * t0**2 + f0 * t0))
+        return np.cos(2 * np.pi * (0.5 * beta * t**2 + f0 * t))
 
-def chirplet(duration, f0, t1, f1, sigma=1, fs=1):
+def chirplet(N, f0, f1, sigma=1, fs=1, analytic=False):
     ''' Gaussian Windowed Chrip '''
-    t0 = np.arange(0, duration, 1/fs)
-    x = chirp(t0, f0, t1, f1)
+    assert f0 <= fs / 2 and f1 <= fs / 2
+
+    t = np.arange(0, N) / fs
+    x = chirp(t, f0, f1, analytic=analytic)
     M = len(x)
-    print(M)
-    M2 = (M) // 2
+    M2 = (M-1) // 2
     n = np.linspace(-M2, M2, M)
+    sigma = M / 8
     w = np.exp(-n * n / (2 * sigma * sigma))
     xw = w * x
-    return xw
+    return xw, (w, x)
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
+    import spectogram
 
-    plt.plot(chirplet(0.1, 1000, 1, 2000, fs=8000))
+    N=33
+    sig, comp = chirplet(N, 0, 0.5, analytic=False)
+    plt.plot(comp[0], alpha=0.4)
+    plt.plot(np.real(comp[1]), alpha=0.6)
+    plt.plot(np.imag(comp[1]), alpha=0.6)
+    plt.plot(np.real(sig))
+    plt.plot(np.imag(sig))
+    plt.figure()
+    sig, comp = chirplet(N, 0, 0.5, analytic=True)
+    plt.plot(comp[0], alpha=0.4)
+    plt.plot(np.real(comp[1]), alpha=0.6)
+    plt.plot(np.imag(comp[1]), alpha=0.6)
+    plt.plot(np.real(sig))
+    plt.plot(np.imag(sig))
     plt.show()
+
