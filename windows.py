@@ -2,7 +2,7 @@
 
 
 import numpy as np
-from scipy import linalg, optimize
+from scipy import linalg
 
 from dsp import util
 
