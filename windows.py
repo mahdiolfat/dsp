@@ -707,6 +707,23 @@ def is_cola(window, hop, span):
     plt.plot(s)
     return np.all(s == s[0])
 
+
+def daniell():
+    pass
+
+
+def parzen():
+    pass
+
+
+def priestley():
+    pass
+
+
+def sasaki():
+    pass
+
+
 def hamming_overlap_example():
     fs = 1
     M = 33
