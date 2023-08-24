@@ -147,7 +147,7 @@ def stft(signal, window, window_length, window_count, hop_size):
         4. take length N FFT to obtain the time-normalized frequency-sampled STFT at time m, with w_k = 2 * pi * k * fs / N, k is the bin number
         5. if needed, remove the time normalization via a linear phase term (phase = -mR, shift right by mR), this yields the sampled STFT
 
-        NOTE: there is no irreversible time-aliasing wheen the STFT frequency axis w is sampled to the points w_k, provided thee FFT size N
+        NOTE: there is no irreversible time-aliasing when the STFT frequency axis w is sampled to the points w_k, provided thee FFT size N
         is greeater than or equal to the window length M.
 
         Since the STFT offers only one integration time (the window length), it implements a uniform baandpass filter bank, i.e., spectral samples

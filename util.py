@@ -23,15 +23,6 @@ def fftshift(signal):
     shifted[midpoint:] = signal[:midpoint+adj]
     return shifted
 
-def dft(signal):
-    '''
-        - discrete time
-        - finit frequency
-        - discrete frequency
-        - finit time
-    '''
-
-    wrange = np.arange(len(signal))
 
 def nextpow2(N) -> int:
     return int(2**np.ceil(np.log2(N)))
@@ -101,6 +92,17 @@ def chirp(t, f0, f1, fs=1, analytic=False):
         return np.exp( 1j * (2 * np.pi * (0.5 * beta * t**2 + f0 * t)))
     else: # real
         return np.cos(2 * np.pi * (0.5 * beta * t**2 + f0 * t))
+
+
+def convm(x):
+    "The convolution matrix"
+    pass
+
+
+def covm(x):
+    "The covariance matrix"
+    pass
+
 
 def chirplet(N, f0, f1, sigma=1, fs=1, analytic=False):
     ''' Gaussian Windowed Chrip '''
