@@ -6,8 +6,10 @@ import numpy as np
 
 from state import covar
 
+
 def overlay(N, omega, A, sigma, num):
     '''Calculates the periodogram using an ensemble of realizations'''
+    pass
 
 
 def periodogram(x, n1=0, n2=None, nfft=1024):
@@ -155,6 +157,8 @@ def modal(x, p, q):
 def phd(x, p):
     '''Pisarenko Harmonic Decomposition frequency estimator
 
+    A noise subspace method.
+
     Page 461, Figure 8.33
     '''
 
@@ -171,6 +175,8 @@ def phd(x, p):
 
 def music(x, p, M):
     '''MUSIC, Frequency estimator
+
+    A noise subspace method.
 
     Page 430, Figure 8.19
     '''
@@ -197,6 +203,8 @@ def music(x, p, M):
 
 def ev(x, p, M):
     '''Eigenvector spectrum estimator: noise subspace method, parametric
+
+    A noise subspace method.
 
     Reference Page 466, Figure 8.35
     '''
